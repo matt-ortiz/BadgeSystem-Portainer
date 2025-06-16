@@ -3,7 +3,7 @@ import os
 import pyodbc
 import json
 from datetime import datetime, timedelta
-from flask import Flask, render_template, jsonify, Response, redirect, url_for, flash, request
+from flask import Flask, render_template, jsonify, Response, redirect, url_for, flash, request, session
 from flask_bootstrap import Bootstrap
 from flask_login import LoginManager, login_user, login_required, logout_user, UserMixin, current_user
 from flask_wtf import FlaskForm
@@ -25,12 +25,7 @@ from users import users_data
 from people import badged_today
 from events import get_all_events, get_calendar_events_range
 
-config = {
-    "DEBUG": True,  # some Flask specific configs
-    "CACHE_TYPE": "FileSystemCache",  # Flask-Caching related configs
-    "CACHE_DIR": "/app/flask_cache/",
-    "CACHE_DEFAULT_TIMEOUT": 300
-}
+# Moved config to app.config.update() above
 
 class User(UserMixin):
     def __init__(self, id, role):
@@ -39,20 +34,38 @@ class User(UserMixin):
 
 
 app = Flask(__name__)
-app.config.from_mapping(config)
+
+# Enhanced Flask configuration for better session management
+app.config.update(
+    SECRET_KEY=os.getenv("SECRET_KEY"),
+    
+    # Session configuration
+    SESSION_COOKIE_SECURE=False,  # Set to True if using HTTPS
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='Lax',
+    PERMANENT_SESSION_LIFETIME=timedelta(hours=8),  # 8 hour sessions
+    
+    # Cache configuration
+    CACHE_TYPE="FileSystemCache",
+    CACHE_DIR="/app/flask_cache/",
+    CACHE_DEFAULT_TIMEOUT=300,
+    
+    # Additional Flask-Login settings
+    REMEMBER_COOKIE_DURATION=timedelta(days=7),
+    REMEMBER_COOKIE_SECURE=False,  # Set to True if using HTTPS
+    REMEMBER_COOKIE_HTTPONLY=True,
+)
+
 CORS(app)
 bcrypt = Bcrypt(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
 cache = Cache(app)
 
-app.secret_key = os.getenv("SECRET_KEY")
 DB_URL = os.getenv("DATABASE_URL")
 UID = os.getenv("DATABASE_UID")
 DATABASE_PWD = os.getenv("DATABASE_PWD")
 
-login_manager = LoginManager()
-login_manager.init_app(app)
 login_manager.login_view = "login"  # Specify the name of the login route
 
 
@@ -98,7 +111,14 @@ def login():
         try:
             if bcrypt.check_password_hash(user_data["password"], password):
                 user_obj = User(user, user_data["role"])
-                login_user(user_obj)
+                # Make session permanent and login user
+                session.permanent = True
+                login_user(user_obj, remember=True)  # Add remember=True for longer sessions
+                
+                # Clear any cache issues
+                cache.clear()
+                
+                flash(f"Welcome back, {user}!", "success")
                 return redirect(url_for("index"))
             else:
                 flash("Invalid credentials", "danger")
@@ -158,6 +178,57 @@ def require_api_key(view_function):
 @require_api_key
 def protected_endpoint():
     return jsonify(data="This is a protected endpoint")
+
+
+# Custom decorator for API endpoints that returns JSON instead of redirects
+def api_auth_required(roles=None):
+    """
+    Custom decorator for API endpoints that returns JSON instead of redirects
+    """
+    if roles is None:
+        roles = ['admin', 'superuser']
+    
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if not current_user.is_authenticated:
+                return jsonify({"error": "Authentication required", "redirect": "/login"}), 401
+            
+            if not hasattr(current_user, 'role') or current_user.role not in roles:
+                return jsonify({"error": "Insufficient privileges"}), 403
+            
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
+
+
+# Add an auth status endpoint for frontend checking
+@app.route('/api/auth/status')
+def auth_status():
+    """
+    Simple endpoint to check authentication status
+    """
+    return jsonify({
+        "authenticated": current_user.is_authenticated,
+        "role": getattr(current_user, 'role', None) if current_user.is_authenticated else None
+    })
+
+
+# Add a route to clear cache if needed
+@app.route('/admin/clear-cache')
+@login_required
+@requires_roles('admin', 'superuser')
+def clear_cache():
+    """
+    Clear application cache - useful for debugging
+    """
+    try:
+        cache.clear()
+        flash("Cache cleared successfully", "success")
+    except Exception as e:
+        flash(f"Error clearing cache: {e}", "danger")
+    
+    return redirect(request.referrer or url_for('index'))
 
 
 
@@ -401,22 +472,50 @@ def api_AMAG_today():
 
 @app.route('/api/AMAG/badging')
 @cache.cached(timeout=2)
-@login_required
-@requires_roles('admin', 'superuser')
+@api_auth_required(['admin', 'superuser'])
 def api_AMAG_badging():
-    badging = badging_txn()  # Replace this with your function to get the room data
-    return badging
+    """
+    Updated badging API endpoint with better authentication handling
+    """
+    try:
+        # Get the badging data
+        badging = badging_txn()
+        
+        # Parse the JSON string to ensure it's valid
+        try:
+            parsed_data = json.loads(badging)
+            return jsonify(parsed_data)
+        except json.JSONDecodeError:
+            # If badging_txn returned an error or invalid JSON
+            return jsonify({"error": "Invalid data format"}), 500
+            
+    except Exception as e:
+        print(f"Error in api_AMAG_badging: {e}")
+        return jsonify({"error": "Internal server error"}), 500
 
 
 # mainly used for the /activity page
 @app.route('/api/AMAG/badging_date')
 @cache.cached(timeout=300, key_prefix=lambda: f"badging_date_{request.args.get('date', '')}")
-@login_required
-@requires_roles('admin', 'superuser')
+@api_auth_required(['admin', 'superuser'])
 def api_AMAG_badging_date():
-    date = request.args.get('date')  # Extract date from the query parameters
-    badging = badging_txn(date)      # Pass the date to the function
-    return badging
+    """
+    Updated badging date API endpoint with better authentication handling
+    """
+    try:
+        date = request.args.get('date')
+        badging = badging_txn(date)
+        
+        # Parse the JSON string to ensure it's valid
+        try:
+            parsed_data = json.loads(badging)
+            return jsonify(parsed_data)
+        except json.JSONDecodeError:
+            return jsonify({"error": "Invalid data format"}), 500
+            
+    except Exception as e:
+        print(f"Error in api_AMAG_badging_date: {e}")
+        return jsonify({"error": "Internal server error"}), 500
 
 
 # @app.route('/transactions', methods=['GET'])

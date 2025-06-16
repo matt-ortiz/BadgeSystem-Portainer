@@ -249,11 +249,33 @@ $(document).ready(function() {
             url: `/api/AMAG/badging_date?date=${newDate}`,
             type: "GET",
             success: function(data) {
-                console.log("Direct AJAX success, received data:", data.length, "records");
+                // Check if we received an error object
+                if (data.error) {
+                    console.error('API Error:', data.error);
+                    if (data.redirect) {
+                        window.location.href = data.redirect;
+                        return;
+                    }
+                } else {
+                    console.log("Direct AJAX success, received data:", data.length, "records");
+                }
             },
             error: function(xhr, status, error) {
                 console.error("Direct AJAX error:", status, error);
                 console.error("Response:", xhr.responseText);
+                
+                // Check for authentication errors
+                if (xhr.status === 401) {
+                    console.log('Authentication required, redirecting to login...');
+                    window.location.href = '/login';
+                    return;
+                }
+                
+                // Check if response looks like HTML (login page)
+                if (xhr.responseText && xhr.responseText.includes('<!DOCTYPE')) {
+                    console.log('Received HTML response, likely login page. Redirecting...');
+                    window.location.href = '/login';
+                }
             }
         });
     }
@@ -287,6 +309,17 @@ $(document).ready(function() {
                 url: `/api/AMAG/badging_date?date=${newDate}`,
                 type: "GET",
                 dataSrc: function(json) {
+                    // Check if we received an error object
+                    if (json.error) {
+                        console.error('API Error:', json.error);
+                        if (json.redirect) {
+                            window.location.href = json.redirect;
+                            return [];
+                        }
+                        $('#records').text('Error: ' + json.error);
+                        return [];
+                    }
+                    
                     console.log("DataTable received data:", json.length, "records");
                     $('#records').text(json.length);
                     return json;
@@ -294,6 +327,21 @@ $(document).ready(function() {
                 error: function(xhr, error, thrown) {
                     console.error('DataTables AJAX error:', error, thrown);
                     console.error('Response text:', xhr.responseText);
+                    
+                    // Check for authentication errors
+                    if (xhr.status === 401) {
+                        console.log('Authentication required, redirecting to login...');
+                        window.location.href = '/login';
+                        return;
+                    }
+                    
+                    // Check if response looks like HTML (login page)
+                    if (xhr.responseText && xhr.responseText.includes('<!DOCTYPE')) {
+                        console.log('Received HTML response, likely login page. Redirecting...');
+                        window.location.href = '/login';
+                        return;
+                    }
+                    
                     $('#records').text('Error loading data');
                 }
             },

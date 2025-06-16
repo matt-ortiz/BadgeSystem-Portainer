@@ -175,8 +175,42 @@
 
     function updateList() {
         fetch('{{ url_for("api_AMAG_badging") }}')
-        .then(response => response.json())
+        .then(response => {
+            // Check if the response is OK
+            if (!response.ok) {
+                // If it's a 401 (unauthorized), redirect to login
+                if (response.status === 401) {
+                    console.log('Authentication required, redirecting to login...');
+                    window.location.href = '/login';
+                    return Promise.reject('Authentication required');
+                }
+                
+                // For other errors, throw an error
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            // Check if the response is actually JSON
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                console.error('Expected JSON but received:', contentType);
+                console.log('Response might be HTML login page, redirecting...');
+                window.location.href = '/login';
+                return Promise.reject('Invalid response type');
+            }
+            
+            return response.json();
+        })
         .then(newData => {
+            // Check if we received an error object
+            if (newData.error) {
+                console.error('API Error:', newData.error);
+                if (newData.redirect) {
+                    window.location.href = newData.redirect;
+                    return;
+                }
+                throw new Error(newData.error);
+            }
+            
             // Compare the new data with the existing data
             if (JSON.stringify(newData) !== JSON.stringify(currentData)) {
                 currentData = newData; // Update the existing data
@@ -216,12 +250,21 @@
                     `;
                     dataList.appendChild(listItem);
                 }
-                checkForMissingImages()
-            } else {
-                // Optional: Log a message if there's no change
+                checkForMissingImages();
             }
         })
-        .catch(error => console.error('Error fetching AMAG bagging data:', error));
+        .catch(error => {
+            console.error('Error fetching AMAG badging data:', error);
+            
+            // Don't spam console with authentication errors during redirects
+            if (error !== 'Authentication required' && error !== 'Invalid response type') {
+                // Show user-friendly error message
+                const dataList = document.getElementById("activity");
+                if (dataList) {
+                    dataList.innerHTML = '<li class="text-danger">Error loading data. Please refresh the page.</li>';
+                }
+            }
+        });
     }
 
 
