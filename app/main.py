@@ -82,16 +82,20 @@ app.register_blueprint(calendar_sync_blueprint)
 
 @login_manager.user_loader
 def load_user(user_id):
-    """Enhanced user loader with better error handling"""
+    """Enhanced user loader with detailed debugging"""
+    print(f"[DEBUG] Attempting to load user: {repr(user_id)}")
     try:
         if user_id in users_data:
             user_role = users_data[user_id]["role"]
+            print(f"[DEBUG] Successfully loaded user {user_id} with role {user_role}")
             return User(id=user_id, role=user_role)
         else:
-            print(f"User {user_id} not found in users_data")
+            print(f"[DEBUG] User {user_id} not found in users_data. Available users: {list(users_data.keys())}")
             return None
     except Exception as e:
-        print(f"Error loading user {user_id}: {e}")
+        print(f"[ERROR] Exception loading user {user_id}: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 
@@ -104,6 +108,10 @@ def refresh_handler():
 @login_manager.unauthorized_handler
 def unauthorized_handler():
     """Handle unauthorized access - check if it's an API call"""
+    print(f"[DEBUG] Unauthorized access to {request.path} from {request.remote_addr}")
+    print(f"[DEBUG] Current user authenticated: {current_user.is_authenticated}")
+    print(f"[DEBUG] Session keys: {list(session.keys())}")
+    
     if request.path.startswith('/api/'):
         return jsonify({"error": "Authentication required", "redirect": "/login"}), 401
     else:
@@ -141,11 +149,11 @@ def login():
                 session.permanent = True
                 session.modified = True  # Force session save
                 
-                # Clear any existing cache issues
-                try:
-                    cache.clear()
-                except Exception as e:
-                    print(f"Warning: Could not clear cache: {e}")
+                # Clear any existing cache issues (temporarily disabled for debugging)
+                # try:
+                #     cache.clear()
+                # except Exception as e:
+                #     print(f"Warning: Could not clear cache: {e}")
                 
                 # Login with remember=True for long sessions
                 login_successful = login_user(user_obj, remember=True, duration=timedelta(days=365))

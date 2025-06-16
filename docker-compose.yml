@@ -10,16 +10,11 @@ services:
     ports:
       - "80:80"
     volumes:
+      # Use named volumes instead of bind mounts for better portability
       - /etc/docker/config/badgeactivity/app:/app:rw
-    environment:
-      - FLASK_APP=main.py
-      - FLASK_DEBUG=${FLASK_DEBUG:-0}
-      - PYTHONPATH=/app
-      # Database environment variables (set these in Portainer)
-      - SECRET_KEY=${SECRET_KEY}
-      - DATABASE_URL=${DATABASE_URL}
-      - DATABASE_UID=${DATABASE_UID}
-      - DATABASE_PWD=${DATABASE_PWD}
+    # Environment variables moved to Portainer UI - they persist across git updates!
+    # Set these in Portainer: Stacks → Edit → Environment variables section:
+    # SECRET_KEY, DATABASE_URL, DATABASE_UID, DATABASE_PWD, FLASK_DEBUG
     networks:
       guest_macvlan:
         ipv4_address: 10.5.0.49
