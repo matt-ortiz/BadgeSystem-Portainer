@@ -43,7 +43,7 @@ app.config.update(
     SESSION_COOKIE_SECURE=False,  # Set to True if using HTTPS
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE='Lax',
-    PERMANENT_SESSION_LIFETIME=timedelta(hours=8),  # 8 hour sessions
+    PERMANENT_SESSION_LIFETIME=timedelta(days=365),  # 1 Year session
     
     # Cache configuration
     CACHE_TYPE="FileSystemCache",
