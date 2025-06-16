@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+
+{% block title %}Badge Assignments{% endblock %}
+
+{% block header %}
+<link rel="stylesheet" href="/static/css/admin.css">
+<link rel="stylesheet" href="/static/css/print.css" media="print">
+{% endblock %}
+
+{% block content %}
+<style type="text/css">
+    .admin-container {
+        padding: 2rem;
+        background-color: #f8f9fa;
+        min-height: calc(100vh - 100px);
+    }
+    .admin-header {
+        background: white;
+        padding: 1rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+    }
+    .admin-nav {
+        display: flex;
+        gap: 1rem;
+        padding: 1rem 0;
+        border-top: 1px solid #eee;
+        margin-top: 1rem;
+    }
+    .admin-nav a {
+        padding: 0.5rem 1rem;
+        text-decoration: none;
+        color: #666;
+        border-radius: 4px;
+        transition: all 0.3s ease;
+    }
+    .admin-nav a:hover {
+        background: #f0f0f0;
+        color: #333;
+    }
+    .admin-nav a.active {
+        background: #007bff;
+        color: white;
+    }
+    .admin-card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    .photo {
+        width: 150px;
+    }
+    .table-responsive {
+        overflow-x: auto;
+        margin-top: 1rem;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+    }
+    th {
+        background: #f8f9fa;
+        padding: 1rem;
+        text-align: left;
+        border-bottom: 2px solid #dee2e6;
+        white-space: nowrap;
+    }
+    td {
+        padding: 1rem;
+        border-bottom: 1px solid #dee2e6;
+        vertical-align: middle;
+    }
+    tr:hover {
+        background-color: #f8f9fa;
+    }
+    .status-indicator {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        margin-right: 0.5rem;
+    }
+    .status-active {
+        background-color: #28a745;
+    }
+    .status-inactive {
+        background-color: #dc3545;
+    }
+    .status-lost {
+        background-color: #ffc107;
+    }
+    .status-watch {
+        background-color: #17a2b8;
+    }
+    .header-controls {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+    .header-btn {
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        text-decoration: none;
+        color: white;
+        font-size: 14px;
+        border: none;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    .print-btn {
+        background-color: #4CAF50;
+    }
+    .pdf-btn {
+        background-color: #2196F3;
+    }
+    .header-btn:hover {
+        opacity: 0.9;
+    }
+    .sort-nav {
+        background: white;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        margin-bottom: 1rem;
+    }
+    .sort-nav a {
+        color: #666;
+        text-decoration: none;
+        margin: 0 0.5rem;
+    }
+    .sort-nav a:hover {
+        color: #007bff;
+    }
+    @media print {
+        .header-btn, .sort-nav, .admin-nav {
+            display: none !important;
+        }
+        table {
+            border: 1px solid #dee2e6;
+        }
+        th, td {
+            border: 1px solid #dee2e6;
+        }
+    }
+</style>
+
+<div class="admin-container">
+    {% include 'includes/admin_nav.html' %}
+
+    <div class="admin-card">
+        <div class="header-controls">
+            <h2 class="mb-0">Badge Assignments</h2>
+            <button class="header-btn print-btn" onclick="window.print()">Print</button>
+            <a href="{{ url_for('ignore.badges_pdf', sort_by=sort_by) }}" class="header-btn pdf-btn">Download PDF</a>
+        </div>
+
+        <div class="sort-nav">
+            Sort by:
+            <a href="{{ url_for('ignore.view_badges', sort_by='LastName') }}">Last Name</a> |
+            <a href="{{ url_for('ignore.view_badges', sort_by='CardNumber') }}">Card Number</a> |
+            <a href="{{ url_for('ignore.view_badges', sort_by='LastScanned') }}">Last Scanned</a>
+        </div>
+
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Photo</th>
+                        <th>Name</th>
+                        <th>Card ID</th>
+                        <th>Card Number</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for assignment in assignments %}
+                    <tr>
+                        <td>
+                            <img class="photo" src="/static/staff/{{ assignment.CardID }}.jpg"
+                                onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCIgZmlsbD0iI2VlZWVlZSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiIGZpbGw9IiM5OTk5OTkiPk5vIEltYWdlPC90ZXh0Pjwvc3ZnPg==';"
+                                alt="{{ assignment.FirstName }} {{ assignment.LastName }}">
+                        </td>
+                        <td>{{ assignment.LastName }}, {{ assignment.FirstName }}</td>
+                        <td>{{ assignment.CardID }}</td>
+                        <td>{{ assignment.CardNumber if assignment.CardNumber else 'N/A' }}</td>
+                        <td>
+                            {% if assignment.Lost %}
+                            <span class="status-indicator status-lost"></span>Lost
+                            {% elif assignment.Inactive or assignment.ForcedInactive %}
+                            <span class="status-indicator status-inactive"></span>Inactive
+                            {% elif assignment.CardWatch %}
+                            <span class="status-indicator status-watch"></span>Watch
+                            {% else %}
+                            <span class="status-indicator status-active"></span>Active
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %} 

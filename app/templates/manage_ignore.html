@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Ignored People{% endblock %}
+
+{% block header %}
+<link rel="stylesheet" href="/static/css/admin.css">
+{% endblock %}
+
+{% block content %}
+<style type="text/css">
+    .photo {
+        height: 150px;
+    }
+    .columns {
+        columns: 3;
+        column-gap: 20px;
+        list-style-type: none;
+        padding: 0;
+    }
+    .columns li {
+        break-inside: avoid;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+    }
+</style>
+
+<div class="admin-container">
+    {% include 'includes/admin_nav.html' %}
+
+    <div class="admin-card">
+        <h2>Add New Person to Ignore List</h2>
+        <form method="post" class="row">
+            <div class="col-md-10">
+                <div class="form-group">
+                    <label for="CardID">Select Person:</label>
+                    <select id="CardID" name="CardID" class="form-control" required>
+                        {% for cardholder in cardholders %}
+                        <option value="{{ cardholder.CardID }}">{{ cardholder.FirstName }} {{ cardholder.LastName }} (CardID: {{ cardholder.CardID }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="form-group">
+                    <label>&nbsp;</label>
+                    <button type="submit" class="btn btn-primary w-100">Add Person</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="admin-card">
+        <h2>Ignored Users List</h2>
+        <ul class="columns">
+            {% for person in ignore_data %}
+            <li class="d-flex">
+                <div>
+                    <img class="photo CardID_{{ person.CardID }} img-fluid shadow border-radius-xl me-3" src="static/staff/{{ person.CardID }}.jpg">
+                </div>
+                <div>
+                    <h4 class="mb-2">{{ person.Name }}</h4>
+                    <p class="mb-2">CardID: {{ person.CardID }}</p>
+                    <form action="{{ url_for('ignore.remove_ignore', card_id=person.CardID) }}" method="post" style="display:inline;">
+                        <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+                    </form>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endblock %}

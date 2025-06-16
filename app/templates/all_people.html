@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}ALL Badges{% endblock %}
+
+{% block header %}
+<link rel="stylesheet" href="/static/css/admin.css">
+<link rel="stylesheet" href="/static/css/print.css" media="print">
+{% endblock %}
+
+{% block content %}
+<style type="text/css">
+    .photo {
+        width: 150px;
+    }
+    .grid-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1rem;
+    }
+    .grid-list {
+        list-style-type: none;
+        padding: 0;
+        margin: 0;
+        display: contents;
+    }
+    .grid-list li {
+        background: white;
+        padding: 1rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .p_meta {
+        padding-left: 1rem;
+    }
+    .header-controls {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+    .header-btn {
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        text-decoration: none;
+        color: white;
+        font-size: 14px;
+        border: none;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    .print-btn {
+        background-color: #4CAF50;
+    }
+    .optimized-btn {
+        background-color: #2196F3;
+    }
+    .header-btn:hover {
+        opacity: 0.9;
+    }
+    .sort-nav {
+        background: white;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        margin-bottom: 1rem;
+    }
+    .sort-nav a {
+        color: #666;
+        text-decoration: none;
+        margin: 0 0.5rem;
+    }
+    .sort-nav a:hover {
+        color: #007bff;
+    }
+    @media print {
+        .header-btn, .sortmenu, .admin-nav {
+            display: none !important;
+        }
+    }
+</style>
+
+<div class="admin-container">
+    {% include 'includes/admin_nav.html' %}
+
+    <div class="admin-card">
+        <div class="header-controls">
+            <h2 class="mb-0">All Badges</h2>
+            <button class="header-btn print-btn" onclick="window.print()">Print</button>
+            <a href="{{ url_for('ignore.all_badges_optimized', sort_by=sort_by) }}" class="header-btn optimized-btn">Optimized View</a>
+        </div>
+
+        <div class="sort-nav">
+            Sort by:
+            <a href="{{ url_for('ignore.all_badges', sort_by='LastName') }}">Last Name</a> |
+            <a href="{{ url_for('ignore.all_badges', sort_by='LastScanned') }}">Last Scanned</a> |
+            <a href="{{ url_for('ignore.all_badges', sort_by='CardID') }}">Badge ID</a>
+        </div>
+
+        <div class="grid-container">
+            <ul class="grid-list">
+                {% for person in cardholders %}
+                <li class="d-flex px-2 py-1">
+                    <div>
+                        <img class="photo CardID_{{ person.CardID }} img-fluid shadow border-radius-xl" src="/static/staff/{{ person.CardID }}.jpg" onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCIgZmlsbD0iI2VlZWVlZSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiIGZpbGw9IiM5OTk5OTkiPk5vIEltYWdlPC90ZXh0Pjwvc3ZnPg==';">
+                    </div>
+                    <div class="p_meta">
+                        <span style="display:block; border-bottom:1px solid #eee; padding-bottom:0.5rem; margin-bottom:0.5rem;">
+                            <strong>{{ person.FirstName }} {{ person.LastName }}</strong>
+                            <br>
+                            <small>Badge ID: {{ person.CardID }}</small>
+                        </span>
+                        <small>
+                            Last Scan:<br>
+                            {{ person.DateTimeOfTxn.strftime('%m/%d/%Y %-I:%M%p') if person.DateTimeOfTxn else 'N/A' }}
+                            <br>
+                            <span style="font-size:10px">
+                            {% if person.ElapsedTime.years is not none %}
+                                {% if person.ElapsedTime.years > 0 %}
+                                    {{ person.ElapsedTime.years }} years,
+                                {% endif %}
+                                {{ person.ElapsedTime.days }} days, {{ person.ElapsedTime.hours }} hours, {{ person.ElapsedTime.minutes }} minutes ago
+                            {% else %}
+                                N/A
+                            {% endif %}
+                            </span>
+                        </small>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}

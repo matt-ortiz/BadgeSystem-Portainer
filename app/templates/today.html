@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block title %}Activity Feed{% endblock %}
+
+{% block content %}
+<style type="text/css">
+  #activity {list-style-type: none !important; margin: 0; padding: 0;}
+/*  #activity li {overflow: hidden;}*/
+/*  .photo{width:50%; float: left; margin-right: 10px;}*/
+#sticky {
+  position: fixed;  /* This will fix the position relative to the viewport */
+  bottom: 5px;        /* 0px from the bottom of the viewport */
+  right: 5px;         /* 0px from the right of the viewport */
+  padding: 10px;    /* Optional: for some space around your content */
+  background-color: rgba(0, 0, 0, 0.6); /* Optional: for visibility, you can use any color */
+  color: white;     /* Optional: text color */
+  border-radius: 8px; /* Optional: if you want rounded corners */
+}
+
+.card {
+    background: rgba(255,255,255,1);
+    box-shadow: 8px 8px 10px rgba(0, 0, 0, 0.5);
+}
+.card .card-body{
+    border-top: 1px solid #ccc;
+}
+.vipstar {opacity:0.2}
+#activity thead {display: none;}
+</style>
+
+
+  <div class="container-fluid mt-1">
+
+    <div class="row justify-content-md-center">
+      <div class="col-md-6">
+        <div class="card mb-4">
+          <div class="card-header pb-0">
+            <h5>Activity for: <span id="today"></span></h5>
+             <h6>
+                Total Count: <span id="total_count"></span>
+            </h6>
+          </div>
+          <div class="card-body pt-0 pb-2">
+            <div class="p-0">
+                <table class="table align-items-center mb-0" id="activity">
+                    <thead>
+                        <tr>
+                            <th style="width:5%" class="ps-2"></th>
+                            <th style="width:6%" class="ps-2"></th>
+                            <th class="ps-2"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+
+
+    </div><!-- //row -->
+    
+    <!-- bottom menu include -->
+    {% include "_menu.html" %}
+  </div><!-- //Container -->
+{% endblock %}
+
+
+{% block scripts %}
+
+<script>
+    // Get today's date
+    let today = new Date();
+
+    // Get day, month, and year
+    let days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    let months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+    let dayName = days[today.getDay()];
+    let monthName = months[today.getMonth()];
+    let year = today.getFullYear();
+    let date = today.getDate();
+
+    // Format the date
+    let formattedDate = `${dayName}, ${monthName} ${date}, ${year}`;
+
+    // Set the formatted date to the HTML element with id "today"
+    document.getElementById('today').innerHTML = formattedDate;
+
+
+    let currentData = [];
+    function updateList() {
+        fetch('http://10.5.0.49/api/AMAG/today?api_key=Wp4GB88gwX4mpbFAj3QyV6e3s')
+        .then(response => response.json())
+        .then(newData => {
+        // Compare the new data with the existing data
+        if (JSON.stringify(newData) !== JSON.stringify(currentData)) {
+            currentData = newData; // Update the existing data
+
+            
+            const total_count = document.getElementById("total_count");
+            total_count.innerHTML = newData.total_count
+
+
+            const tableBody = document.querySelector("#activity tbody");
+            count = 1
+            tableBody.innerHTML = '';
+            for (const item of newData['details']) {
+                const row = tableBody.insertRow();
+                
+                let isVIP
+                if (item.is_vip){
+                    isVIP='<i class="fa-solid fa-star vipstar"></i>'
+                }else{
+                    isVIP = ""
+                }
+
+                row.innerHTML = `
+                    <td style="width:5%">${count}</td>
+                    <td style="width:6%"> ${isVIP}</td>
+                    <td>${item.Name}</td>
+                `;
+                count++
+              }
+
+          }else {
+            // const currentTime = getCurrentTime();
+            // console.log(`No change at ${currentTime}`); // Log a message with the current time
+        }
+
+        })
+        .catch(error => console.error('Error fetching AMAG today data:', error));
+    }
+
+    setInterval(updateList, 5000);  // Refresh the data every second (1000 ms)
+    updateList();  // Initial data fetch
+
+</script>
+
+{% endblock %}

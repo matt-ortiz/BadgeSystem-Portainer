@@ -1,0 +1,161 @@
+
+    /* Reset basic elements for printing */
+    body {
+        background-color: white !important;
+        color: black !important;
+        font-size: 9pt;
+        line-height: 1;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+    }
+
+    /* Adjust container for print */
+    .container {
+        max-width: none;
+        width: 100%;
+        margin: 0;
+        padding: 0.2cm;
+    }
+
+    /* Optimize header for print */
+    .calendar-header {
+        padding: 0;
+        margin-bottom: 0.2cm;
+        box-shadow: none;
+        border: none;
+    }
+
+    .date-navigator {
+        justify-content: flex-start;
+    }
+    
+    nav .space-x-4{display: none;}
+    nav .h-16 {height: auto}
+    nav {border: none !important;}
+    nav .text-white {color: #000 !important;}
+    nav .mx-auto {margin:0 !important; padding:0 !important;}
+
+    /* Hide all buttons */
+    .nav-button, 
+    button {
+        display: none !important;
+    }
+
+    /* Make date display compact */
+    .date-display {
+        font-size: 12pt;
+        font-weight: bold;
+        min-width: 0;
+        width: auto;
+        text-align: left;
+        color: black !important;
+        margin: 0;
+        padding: 0;
+    }
+
+    /* Adjust event cards for print - no border */
+    .event-card {
+        break-inside: avoid;
+        page-break-inside: avoid;
+        margin-bottom: 0.15cm;
+        padding: 0;
+        border: none;
+        box-shadow: none !important;
+        background: none;
+    }
+
+    /* Compact event titles */
+    .event-title {
+        font-size: 10pt;
+        margin-bottom: 0.1cm;
+        color: black !important;
+        line-height: 1;
+        border-bottom: 0.25pt solid #ddd;
+        padding-bottom: 0.05cm;
+    }
+
+    /* Style event time for print */
+    .event-time {
+        color: black !important;
+        font-weight: bold;
+    }
+
+    /* Adjust detail rows to be compact and indented */
+    .detail-row {
+        margin-bottom: 0;
+        display: grid;
+        grid-template-columns: 65px 1fr;
+        gap: 0.1cm;
+        line-height: 1.1;
+        margin-left: 0.5cm;
+    }
+
+    .detail-label {
+        color: black !important;
+        font-weight: bold;
+        font-size: 8pt;
+    }
+
+    .detail-value {
+        color: black !important;
+        font-size: 8pt;
+    }
+
+    /* Compact empty state */
+    .empty-state {
+        text-align: center;
+        padding: 0.5cm;
+    }
+
+    /* Hide loading spinner */
+    .loading {
+        display: none !important;
+    }
+
+    /* Hide icons */
+    .fas {
+        display: none !important;
+    }
+
+    /* Remove background colors and shadows */
+    * {
+        background: none !important;
+        box-shadow: none !important;
+    }
+
+    /* Hide scrollbars */
+    ::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* Minimize margins */
+    @page {
+        margin: 1cm;
+        size: portrait;
+    }
+
+    /* Make event container more compact */
+    .event-container {
+        display: grid;
+        gap: 0.15cm;
+    }
+
+    /* Reduce whitespace in description */
+    .detail-value[style*="white-space: pre-wrap"] {
+        white-space: normal !important;
+        line-height: 1.1;
+    }
+
+    /* Compact attendee lists */
+    .attendees-list {
+        margin: 0;
+        padding: 0;
+        line-height: 1.1;
+    }
+
+    /* Reduce space between details sections */
+    .event-details {
+        display: grid;
+        gap: 0.05cm;
+    }

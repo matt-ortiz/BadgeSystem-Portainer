@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Badges PDF</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 10pt;
+            margin: 0;
+            padding: 0;
+        }
+        h1 {
+            font-size: 16pt;
+            margin: 10px 0;
+            text-align: center;
+        }
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 5px;
+        }
+        .grid-list {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+        .grid-list li {
+            display: flex;
+            padding: 5px;
+            margin-bottom: 5px;
+            page-break-inside: avoid;
+            break-inside: avoid;
+            border-bottom: 1px solid #eee;
+        }
+        .photo {
+            width: 60px;
+            height: auto;
+        }
+        .p_meta {
+            font-size: 9pt;
+            line-height: 1.2;
+            padding-left: 5px;
+        }
+        .name {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 3px;
+        }
+        .card-id {
+            font-size: 8pt;
+            color: #666;
+        }
+        .last-scan {
+            font-size: 8pt;
+            margin-top: 3px;
+        }
+    </style>
+</head>
+<body>
+    <h1>All Badges</h1>
+    <div class="grid-container">
+        <ul class="grid-list">
+            {% for person in cardholders %}
+            <li>
+                <div>
+                    <img class="photo" src="{{ person.optimized_image }}" alt="{{ person.FirstName }} {{ person.LastName }}">
+                </div>
+                <div class="p_meta">
+                    <span class="name">{{ person.FirstName }} {{ person.LastName }}</span>
+                    <span class="card-id">ID: {{ person.CardID }}</span>
+                    {% if person.DateTimeOfTxn %}
+                    <div class="last-scan">
+                        Last Scan: {{ person.DateTimeOfTxn.strftime('%m/%d/%Y %-I:%M%p') }}
+                    </div>
+                    {% else %}
+                    <div class="last-scan">Last Scan: N/A</div>
+                    {% endif %}
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+</body>
+</html>

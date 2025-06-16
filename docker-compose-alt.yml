@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    image: badgeactivity-web
+    container_name: Badge-Activity
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - /etc/docker/config/badgeactivity/app:/app:rw
+    environment:
+      - FLASK_APP=main.py
+      - FLASK_DEBUG=${FLASK_DEBUG:-0}
+      - PYTHONPATH=/app
+      # Database environment variables (set these in Portainer)
+      - SECRET_KEY=${SECRET_KEY}
+      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_UID=${DATABASE_UID}
+      - DATABASE_PWD=${DATABASE_PWD}
+    networks:
+      macvlan:
+        ipv4_address: 10.5.0.45  # Within your IP range
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "1"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  macvlan:
+    external: true

@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Facility Calendar</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #3b82f6;
+            --background-color: #f8fafc;
+            --text-color: #1e293b;
+            --border-color: #e2e8f0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            background-color: var(--background-color);
+            color: var(--text-color);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            background: white;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .date-navigator {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .date-display {
+            font-size: 1.25rem;
+            font-weight: 600;
+            min-width: 200px;
+            text-align: center;
+        }
+
+        .nav-button {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: background-color 0.2s;
+        }
+
+        .nav-button:hover {
+            background: var(--secondary-color);
+        }
+
+        .event-container {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .event-card {
+            background: white;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+            position: relative;
+            overflow: hidden;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .event-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+        }
+
+        .event-time {
+            color: var(--primary-color);
+        }
+
+        .event-details {
+            display: grid;
+            gap: 0.75rem;
+            font-size: 0.9375rem;
+        }
+
+        .detail-row {
+            display: grid;
+            grid-template-columns: 120px 1fr;
+            gap: 1rem;
+            align-items: start;
+        }
+
+        .detail-label {
+            font-weight: 600;
+            color: #64748b;
+        }
+
+        .detail-value {
+            color: var(--text-color);
+        }
+
+        .attendees-list {
+            white-space: pre-wrap;
+            margin-top: 0.25rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: #64748b;
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            margin: 0 auto;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+        }
+    </style>
+    <link rel="stylesheet" href="/static/css/calendar_print.css" media="print">
+
+    
+</head>
+<body>
+    <div class="container">
+        <div class="calendar-header">
+            <div class="date-navigator">
+                <button class="nav-button" onclick="changeDate(-1)">
+                    <i class="fas fa-chevron-left"></i>
+                    Previous
+                </button>
+                <div class="date-display" id="current-date"></div>
+                <button class="nav-button" onclick="changeDate(1)">
+                    Next
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+            <button class="nav-button" onclick="fetchEvents(new Date())">
+                <i class="fas fa-calendar-day"></i>
+                Today
+            </button>
+        </div>
+        <div id="events-container"></div>
+    </div>
+
+    <script>
+        let currentDate = new Date();
+
+        function showLoading() {
+            const container = document.getElementById('events-container');
+            container.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Loading schedule...</p>
+                </div>
+            `;
+        }
+
+        function timeToMinutes(timeStr) {
+    // Convert time like "8:00am" to minutes since midnight
+    const [time, period] = timeStr.split(/(?=[ap]m)/i);
+    let [hours, minutes] = time.split(':').map(Number);
+    
+    // Adjust for PM times
+    if (period.toLowerCase() === 'pm' && hours !== 12) {
+        hours += 12;
+    }
+    // Adjust for 12 AM
+    if (period.toLowerCase() === 'am' && hours === 12) {
+        hours = 0;
+    }
+    
+    return hours * 60 + minutes;
+}
+
+function cleanLocation(location) {
+    // Split location if there are multiple locations separated by commas
+    return location.split(',')
+        .map(loc => {
+            loc = loc.trim();
+            // Remove "NRSC-" prefix and floor number
+            loc = loc.replace(/NRSC-\d+-/, '');
+            // Remove the room capacity in parentheses
+            loc = loc.replace(/\s*\(\d+\)$/, '');
+            // Remove "Office Calendar"
+            loc = loc.replace(/Office Calendar,?\s*/, '');
+            return loc;
+        })
+        .filter(loc => loc) // Remove empty strings
+        .join(', ');
+}
+
+async function fetchEvents(date) {
+            console.log('Fetching events for date:', date);
+            showLoading();
+            const dateStr = date.toISOString().split('T')[0];
+            try {
+                const response = await fetch(`/api/events?date=${dateStr}`);
+                const data = await response.json();
+                
+                // Sort events by start time
+                data.events.sort((a, b) => {
+                    return timeToMinutes(a.start_time) - timeToMinutes(b.start_time);
+                });
+                console.log('Event data:', data);
+                
+                document.getElementById('current-date').textContent = data.formatted_date;
+                
+                const container = document.getElementById('events-container');
+                
+                if (!data.events.length) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-calendar-xmark" style="font-size: 2rem; color: #cbd5e1; margin-bottom: 1rem;"></i>
+                            <h3>No events scheduled</h3>
+                            <p>There are no events scheduled for this day.</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                container.innerHTML = `
+                    <div class="event-container">
+                        ${data.events.map(event => `
+                            <div class="event-card">
+                                <div class="event-title">
+                                    <span class="event-time">${event.start_time} - ${event.end_time}</span> | ${event.summary}
+                                </div>
+                                <div class="event-details">
+                                    ${event.location ? `
+                                        <div class="detail-row">
+                                            <span class="detail-label">Where:</span>
+                                            <span class="detail-value">${cleanLocation(event.location)}</span>
+                                        </div>
+                                    ` : ''}
+                                    ${event.created_by ? `
+                                        <div class="detail-row">
+                                            <span class="detail-label">Created by:</span>
+                                            <span class="detail-value">${event.created_by}</span>
+                                        </div>
+                                    ` : ''}
+                                    ${event.attendees?.length ? `
+                                        <div class="detail-row">
+                                            <span class="detail-label">Who:</span>
+                                            <span class="detail-value">${event.attendees.map(a => a.displayName || a.email).join(', ')}</span>
+                                        </div>
+                                    ` : ''}
+                                    ${event.description ? `
+                                        <div class="detail-row">
+                                            <span class="detail-label">Description:</span>
+                                            <span class="detail-value" style="white-space: pre-wrap;">${event.description}</span>
+                                        </div>
+                                    ` : '<!-- No description available -->'}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Error fetching events:', error);
+                document.getElementById('events-container').innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 2rem; color: #ef4444; margin-bottom: 1rem;"></i>
+                        <h3>Error loading schedule</h3>
+                        <p>There was a problem loading the schedule. Please try again later.</p>
+                    </div>
+                `;
+            }
+        }
+
+        function changeDate(days) {
+            currentDate.setDate(currentDate.getDate() + days);
+            fetchEvents(currentDate);
+        }
+
+        // Initial load
+        fetchEvents(currentDate);
+    </script>
+</body>
+</html>

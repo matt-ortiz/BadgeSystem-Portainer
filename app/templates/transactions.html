@@ -1,0 +1,323 @@
+{% extends "base.html" %}
+
+{% block title %}Activity Feed{% endblock %}
+{% block header %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+
+{% endblock %}
+
+{% block content %}
+<style type="text/css">
+  #activity {list-style-type: none !important; margin: 0; padding: 0;}
+/*  #activity li {overflow: hidden;}*/
+/*  .photo{width:50%; float: left; margin-right: 10px;}*/
+.flatpickr-calendar .flatpickr-innerContainer {margin-top:0 !important}
+.flatpickr-calendar .flatpickr-day.today {background: none !important; color: #484848 !important; border:1px solid #bbb !important;}
+.flatpickr-calendar .flatpickr-day.selected {background:#42a5f5 !important; color:#fff;}
+.form-control:focus {border-color: #d2d6da; box-shadow: none;}
+.card {background: rgba(255,255,255,1);}
+</style>
+
+
+  <div class="container-fluid mt-1">
+
+<!--     <div class="row">
+      <div class="col-md-6">
+        <div class="card mb-4">
+          <div class="card-header pb-0">
+            <h6>Monitoring Activity</h6>
+          </div>
+          <div class="card-body pt-0 pb-2">
+
+            <ul class="mb-0" id="activity">
+              
+            </ul>
+          </div>
+        </div>
+      </div> -->
+
+    <div class="row justify-content-md-center">
+      <div class="col-md-12">
+        <div class="card" id="activity-card" style="display:none">
+            <div class="card-header">
+                <div class="row">
+                    <div class="col-6">
+                        <h3>Card Activity: <span id="date_range"></span> </h3>
+                        <p>Total Records: <span id="records"></span></p>
+                    </div>
+                    <div class="col-6">
+                        <form>
+                            <!-- <input class="datepicker" class="flatpickr flatpickr-input active form-control" type="text" placeholder="Select Date.." readonly="readonly"> -->
+                            <div class="datepicker">
+                                <div class="form-group">
+                                    <div class="input-group mb-4">
+                                        <span class="input-group-text"><i class="ni ni-calendar-grid-58"></i></span>
+                                        <input type="text" placeholder="Select Date.." class="form-control" data-input> <!-- input is mandatory -->
+                                    </div>
+                            </div>
+                        </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        <div class="card-body pt-0 pb-2">
+            <div class="table-responsive p-0">
+                        <table class="table align-items-center mb-0" id="activity-table">
+                            <thead>
+                                <tr>
+                                    <th>Img</th>
+                                    <th>Name</th>
+                                    <th>Activity Date</th>
+                                    <th>Reader</th>
+                                    <th>Status</th>
+                                    
+                                    <!-- Add more table headers as needed -->
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Loading...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div><!-- //card -->
+
+        </div>
+      </div>
+      <div class="row justify-content-md-center" id="selectDate">
+          <div class="col-6">
+              <class class="card">
+                <div class="card-header">
+                    Please Select a Date
+                </div>
+                <div class="card-body">
+                    <input id="datepicker-inline" class="flatpickr flatpickr-input active" type="text" placeholder="Select Date.." readonly="readonly">
+                </div>
+            </class>
+          </div>
+      </div>
+
+
+
+    </div><!-- //row -->
+  </div><!-- //Container -->
+{% endblock %}
+
+
+{% block scripts %}
+
+<script>
+    flatpickr(".datepicker",{
+        wrap: true,
+        minDate: new Date().fp_incr(-90), // 14 days from now,
+        maxDate: "today",
+        onChange: function(selectedDates, dateStr, instance) {
+        // Update the URL with the selected date
+        const newUrl = updateQueryString('date', dateStr);
+        history.pushState(null, null, newUrl);
+        updateList()
+        }
+    });
+
+    flatpickr("#datepicker-inline",{
+        inline: true,
+        minDate: new Date().fp_incr(-90), // 14 days from now,
+        maxDate: "today",
+        onChange: function(selectedDates, dateStr, instance) {
+        // Update the URL with the selected date
+        const newUrl = updateQueryString('date', dateStr);
+        history.pushState(null, null, newUrl);
+        updateList()
+        }
+    });
+
+
+    function updateQueryString(key, value, url) {
+        if (!url) url = window.location.href;
+
+        const re = new RegExp("([?&])" + key + "=.*?(&|#|$)(.*)", "gi");
+
+        if (re.test(url)) {
+            if (typeof value !== 'undefined' && value !== null)
+                return url.replace(re, '$1' + key + "=" + value + '$2$3');
+            else {
+                const hash = url.split('#');
+                url = hash[0].replace(re, '$1$3').replace(/(&|\?)$/, '');
+                if (typeof hash[1] !== 'undefined' && hash[1] !== null) 
+                    url += '#' + hash[1];
+                return url;
+            }
+        }
+        else {
+            if (typeof value !== 'undefined' && value !== null) {
+                const separator = url.indexOf('?') !== -1 ? '&' : '?';
+                const hash = url.split('#');
+                url = hash[0] + separator + key + '=' + value;
+                if (typeof hash[1] !== 'undefined' && hash[1] !== null) 
+                    url += '#' + hash[1];
+                return url;
+            }
+            else
+                return url;
+        }
+    }
+
+
+
+
+
+
+    // Extract Card ID from image source
+    function extractCardIdFromImageSrc(imageSrc) {
+        const regex = /\/(\d+)\.jpg$/;
+        const matches = imageSrc.match(regex);
+        if (matches && matches[1]) {
+            return matches[1];
+        }
+        return null;
+    }
+
+    // Function to trigger Python function via AJAX
+    function fetchCardImageFromServer(cardId) {
+        fetch(`/get_card_image/${cardId}`)
+        .then(response => response.json())
+        .then(data => {
+            console.log(data)
+            const imageElements = document.querySelectorAll(`.photo[src*="${cardId}.jpg"]`);
+            imageElements.forEach(imageElement => {
+              imageElement.src = data.img_path;
+            });
+        })
+        .catch(error => {
+            console.error('Error fetching card image:', error);
+        });
+    }
+
+
+    // Function to check for missing images and trigger Python function
+    function checkForMissingImages() {
+        const cardElements = document.querySelectorAll('.card');
+        cardElements.forEach(cardElement => {
+            const imageElement = cardElement.querySelector('.photo');
+            const cardId = extractCardIdFromImageSrc(imageElement.src);
+            const img = new Image();
+
+            img.onload = function() {
+                // Image exists, do nothing
+            };
+
+            img.onerror = function() {
+                // Image is missing, call the Python function
+                console.log("missing image: " + cardId +".jpg") 
+                fetchCardImageFromServer(cardId);
+            };
+
+            img.src = imageElement.src;
+        });
+    }
+
+    function reformatDate(dateString) {
+        const days = [
+            "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
+        ];
+        
+        const months = [
+            "January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December"
+        ];
+
+        // Split the date string and use the year, month, and day parts explicitly to avoid timezone issues
+        const [year, month, day] = dateString.split('-');
+        const date = new Date(year, month - 1, day);  // month is 0-indexed
+        
+        const dayName = days[date.getDay()];
+        const monthName = months[date.getMonth()];
+
+        return `${dayName}, ${monthName} ${day}`;
+    }
+
+
+
+    function getDateFromUrl() {
+        const queryString = window.location.search;
+        const urlParams = new URLSearchParams(queryString);
+        return urlParams.get('date');
+    }
+
+
+    let currentData = [];
+
+    function updateList() {
+        const date = getDateFromUrl();
+        console.log(date)
+        const dateSpan = document.getElementById('date_range');
+        const recordsSpan = document.getElementById('records');
+
+        // Choose endpoint based on whether date is provided
+        let endpointUrl = date ? '{{ url_for("api_AMAG_badging_date") }}' : '{{ url_for("api_AMAG_badging") }}';
+        
+        if (date) {
+            endpointUrl += `?date=${date}`;
+            const formattedDate = reformatDate(date);
+            dateSpan.innerHTML = formattedDate
+            
+            // Display the activity-card element
+            const activityCard = document.getElementById("activity-card");
+            activityCard.style.display = "block";
+
+            const selectDate = document.getElementById("selectDate");
+            selectDate.style.display = "none";            
+        }else{
+
+        }
+
+        fetch(endpointUrl)
+        .then(response => response.json())
+        .then(newData => {
+
+        // Compare the new data with the existing data
+        if (JSON.stringify(newData) !== JSON.stringify(currentData)) {
+            currentData = newData; // Update the existing data
+
+            const totalRecords = newData.length;
+            recordsSpan.innerHTML = totalRecords;
+
+
+
+            //const dataList = document.getElementById("activity");
+            const tableBody = document.querySelector("#activity-table tbody");
+            tableBody.innerHTML = '';
+
+            for (const item of newData) {
+                const row = tableBody.insertRow();
+                const conditionClass = item.TxnConditionName.includes("Wrong") ? "text-danger text-uppercase font-weight-bold" : "";
+
+
+                row.innerHTML = `
+                  <td><img style="width:50%" class="photo CardID_${item.CardNumber} img-fluid shadow border-radius-xl" src="static/staff/${item.CardNumber}.jpg"></td>
+                  <td>${item.Name}</td>
+                  <td>${item.DateTimeOfTxn}</td>
+                  <td>${item.WhereName}</td>
+                  <td>${item.TxnConditionName}</td>
+                `;
+
+              }
+              checkForMissingImages()
+            }else {
+                // const currentTime = getCurrentTime();
+                // console.log(`No change at ${currentTime}`); // Log a message with the current time
+            }
+
+        })
+        .catch(error => console.error('Error fetching AMAG bagging data:', error));
+    }
+
+    // setInterval(updateList, 5000);  // Refresh the data every second (1000 ms)
+    updateList();  // Initial data fetch
+</script>
+
+{% endblock %}

@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block title %}ALL Badges{% endblock %}
+
+{% block content %}
+
+<style type="text/css">
+    .photo{
+        width:150px;
+/*        height:150px; */
+    }
+    .grid-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 10px; /* Adjust gap as needed */
+    }
+
+    .grid-list {
+        list-style-type: none;
+        padding: 0;
+        margin: 0;
+        display: contents; /* Allows li elements to be treated as grid items */
+    }
+
+    .grid-list li {
+        background-color: #f0f0f0;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+    }
+    .p_meta{padding-left:10px}
+
+    /* Smaller header */
+    h1 {
+        font-size: 1.5em;
+        margin: 10px 0;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    
+    h1 .date {
+        font-size: 0.8em;
+        color: #666;
+        font-weight: normal;
+    }
+
+    /* Hide print button on screen but show in print */
+    @media screen {
+        .print-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+    }
+    @media print {
+        .print-btn, .sortmenu {
+            display: none !important;
+        }
+        h1 .date {
+            color: #333;
+        }
+    }
+</style>
+
+<link rel="stylesheet" href="/static/css/print.css" media="print">
+
+<div class="container-fluid mt-1 bg-gray-100">
+    <div class="row">
+        <h1>All Badges <span class="date">{{ server_time.strftime('%B %d, %Y') }}</span></h1>
+        <p class="sortmenu">Sort by:
+            <a href="{{ url_for('ignore.all_badges_optimized', sort_by='LastName') }}">Last Name</a> |
+            <a href="{{ url_for('ignore.all_badges_optimized', sort_by='LastScanned') }}">Last Scanned</a> |
+            <a href="{{ url_for('ignore.all_badges_optimized', sort_by='CardID') }}">Badge ID</a>
+        </p>
+        <div class="grid-container">
+            <ul class="grid-list">
+                {% for person in cardholders %}
+                <li class="d-flex px-2 py-1">
+                    <div>
+                        <img class="photo CardID_{{ person.CardID }} img-fluid shadow border-radius-xl" 
+                             src="{{ optimize_image_for_pdf(person.CardID) }}"
+                             alt="{{ person.FirstName }} {{ person.LastName }}">
+                    </div>
+                    <div class="p_meta">
+                        <span style="display:block; border-bottom:1px solid #aaa; padding-bottom:3px;">
+                            <strong>{{ person.FirstName }} {{ person.LastName }}</strong> ({{ person.CardID }})
+                        </span>
+                        <small>
+                            Last Scan:<br /> 
+                            {{ person.DateTimeOfTxn.strftime('%m/%d/%Y %-I:%M%p') if person.DateTimeOfTxn else 'N/A' }} <br />
+                            <span style="font-size:10px">
+                            {% if person.ElapsedTime.years is not none %}
+                                {% if person.ElapsedTime.years > 0 %}
+                                    {{ person.ElapsedTime.years }} years, 
+                                {% endif %}
+                                {{ person.ElapsedTime.days }} days, {{ person.ElapsedTime.hours }} hours, {{ person.ElapsedTime.minutes }} minutes ago
+                            {% else %}
+                                N/A
+                            {% endif %}
+                            </span>
+                        </small>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+
+<button class="print-btn" onclick="window.print()">Print</button>
+
+{% endblock %}

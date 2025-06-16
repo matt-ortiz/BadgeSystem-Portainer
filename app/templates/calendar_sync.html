@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NRSC Calendar Sync Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.2.1/flowbite.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.2.1/datepicker.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.2.1/flowbite.min.css" rel="stylesheet" />
+    <link href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <nav class="bg-blue-800 border-b border-blue-700">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center">
+                    <div class="text-white font-bold text-xl">NRSC Calendar Sync</div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="relative">
+                        <input type="date" id="dateSelector" 
+                               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                    </div>
+                </div>
+                <a href="/events" class="text-white hover:text-gray-200 flex items-center">
+                    <svg class="h-5 w-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                    </svg>
+                    Print Calendar
+                </a>
+
+
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div class="px-4 py-4 sm:px-0">
+            <!-- Stats Overview -->
+            <div class="grid grid-cols-1 gap-5 sm:grid-cols-4 mb-6">
+                <div class="bg-red-100 overflow-hidden shadow rounded-lg">
+                    <div class="p-5">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                </svg>
+                            </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dt class="text-sm font-medium text-red-800 truncate">Conflicts</dt>
+                                <dd class="flex items-baseline">
+                                    <div class="text-2xl font-semibold text-red-900" id="conflictsCount">0</div>
+                                </dd>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-yellow-100 overflow-hidden shadow rounded-lg">
+                    <div class="p-5">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dt class="text-sm font-medium text-yellow-800 truncate">Missing from Master</dt>
+                                <dd class="flex items-baseline">
+                                    <div class="text-2xl font-semibold text-yellow-900" id="missingMasterCount">0</div>
+                                </dd>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-blue-100 overflow-hidden shadow rounded-lg">
+                    <div class="p-5">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                </svg>
+                            </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dt class="text-sm font-medium text-blue-800 truncate">Missing from Rooms</dt>
+                                <dd class="flex items-baseline">
+                                    <div class="text-2xl font-semibold text-blue-900" id="missingRoomsCount">0</div>
+                                </dd>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-green-100 overflow-hidden shadow rounded-lg">
+                    <div class="p-5">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dt class="text-sm font-medium text-green-800 truncate">Matching Events</dt>
+                                <dd class="flex items-baseline">
+                                    <div class="text-2xl font-semibold text-green-900" id="matchingCount">0</div>
+                                </dd>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Missing from Master Calendar -->
+                <div class="bg-white overflow-hidden shadow rounded-lg">
+                    <div class="px-4 py-5 sm:p-6">
+                        <h2 class="text-lg font-medium text-yellow-600 mb-4">Missing from Master Calendar</h2>
+                        <div id="missingFromMaster" class="space-y-4"></div>
+                    </div>
+                </div>
+
+                <!-- Missing from Room Calendars -->
+                <div class="bg-white overflow-hidden shadow rounded-lg">
+                    <div class="px-4 py-5 sm:p-6">
+                        <h2 class="text-lg font-medium text-blue-600 mb-4">Missing from Room Calendars</h2>
+                        <div id="missingFromRooms" class="space-y-4"></div>
+                    </div>
+                </div>
+
+                <!-- Matching Events -->
+                <div class="bg-white overflow-hidden shadow rounded-lg">
+                    <div class="px-4 py-5 sm:p-6">
+                        <h2 class="text-lg font-medium text-green-600 mb-4">Matching Events</h2>
+                        <div id="matchingEvents" class="space-y-4"></div>
+                    </div>
+                </div>
+
+                <!-- Conflicts Section -->
+                <div class="bg-white overflow-hidden shadow rounded-lg">
+                    <div class="px-4 py-5 sm:p-6">
+                        <h2 class="text-lg font-medium text-red-600 mb-4">Conflicts</h2>
+                        <div id="conflicts" class="space-y-4"></div>
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+    </main>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set default date to today
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('dateSelector').value = today;
+        
+        // Initial load
+        fetchCalendarData(today);
+        
+        // Add event listener for date changes
+        document.getElementById('dateSelector').addEventListener('change', function(e) {
+            fetchCalendarData(e.target.value);
+        });
+    });
+
+    async function fetchCalendarData(date) {
+        showLoading(); 
+        try {
+            const response = await fetch(`/api/calendar_comparison?date=${date}`);
+            if (!response.ok) throw new Error('Failed to fetch data');
+            const data = await response.json();
+            updateDashboard(data);
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Error fetching calendar data');
+        }
+    }
+
+    function updateDashboard(data) {
+        // Update counts
+        document.getElementById('conflictsCount').textContent = data.conflicts.length;
+        document.getElementById('missingMasterCount').textContent = data.missing_from_master.length;
+        document.getElementById('missingRoomsCount').textContent = data.missing_from_calendars.length;
+        document.getElementById('matchingCount').textContent = data.matching_events.length;
+        
+        // Clear existing content
+        document.getElementById('conflicts').innerHTML = '';
+        document.getElementById('missingFromMaster').innerHTML = '';
+        document.getElementById('missingFromRooms').innerHTML = '';
+        document.getElementById('matchingEvents').innerHTML = '';
+        
+        // Update Conflicts
+        if (data.conflicts.length === 0) {
+            document.getElementById('conflicts').innerHTML = 
+                '<div class="text-green-600 text-center py-4">No conflicts found</div>';
+        } else {
+            data.conflicts.forEach(conflict => {
+                const html = `
+                    <div class="border border-red-200 rounded-lg p-4 bg-red-50">
+                        <div class="font-medium text-red-900">${conflict.event1.location}</div>
+                        <div class="mt-2 grid grid-cols-2 gap-4">
+                            <div class="p-3 bg-white rounded shadow-sm">
+                                <div class="font-medium">${conflict.event1.summary}</div>
+                                <div class="text-sm text-gray-600">${conflict.event1.start_time} - ${conflict.event1.end_time}</div>
+                            </div>
+                            <div class="p-3 bg-white rounded shadow-sm">
+                                <div class="font-medium">${conflict.event2.summary}</div>
+                                <div class="text-sm text-gray-600">${conflict.event2.start_time} - ${conflict.event2.end_time}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.getElementById('conflicts').innerHTML += html;
+            });
+        }
+        
+        // Update Missing from Master
+        if (data.missing_from_master.length === 0) {
+            document.getElementById('missingFromMaster').innerHTML = 
+                '<div class="text-green-600 text-center py-4">No missing events</div>';
+        } else {
+            data.missing_from_master.forEach(event => {
+                const html = `
+                    <div class="border border-yellow-200 rounded-lg p-4 bg-yellow-50">
+                        <div class="font-medium text-yellow-900">${event.summary}</div>
+                        <div class="mt-1 text-sm">
+                            <div class="text-gray-600">Location: ${event.location}</div>
+                            <div class="text-gray-600">${event.start_time} - ${event.end_time}</div>
+                            <div class="text-gray-500 mt-1">Created by: ${event.created_by}</div>
+                        </div>
+                    </div>
+                `;
+                document.getElementById('missingFromMaster').innerHTML += html;
+            });
+        }
+        
+        // Update Missing from Rooms
+        if (data.missing_from_calendars.length === 0) {
+            document.getElementById('missingFromRooms').innerHTML = 
+                '<div class="text-green-600 text-center py-4">No missing events</div>';
+        } else {
+            data.missing_from_calendars.forEach(event => {
+                const html = `
+                    <div class="border border-blue-200 rounded-lg p-4 bg-blue-50">
+                        <div class="font-medium text-blue-900">${event.summary}</div>
+                        <div class="mt-1 text-sm">
+                            <div class="text-gray-600">Location: ${event.location}</div>
+                            <div class="text-gray-600">${event.start_time} - ${event.end_time}</div>
+                            <div class="text-gray-500 mt-1">Created by: ${event.created_by}</div>
+                        </div>
+                    </div>
+                `;
+                document.getElementById('missingFromRooms').innerHTML += html;
+            });
+        }
+        
+        // Update Matching Events
+        if (data.matching_events.length === 0) {
+            document.getElementById('matchingEvents').innerHTML = 
+                '<div class="text-yellow-600 text-center py-4">No matching events</div>';
+        } else {
+            data.matching_events.forEach(match => {
+                const html = `
+                    <div class="border border-green-200 rounded-lg p-4 bg-green-50">
+                        <div class="font-medium text-green-900">${match.master.summary}</div>
+                        <div class="mt-1 text-sm">
+                            <div class="text-gray-600">Location: ${match.master.location}</div>
+                            <div class="text-gray-600">${match.master.start_time} - ${match.master.end_time}</div>
+                        </div>
+                    </div>
+                `;
+                document.getElementById('matchingEvents').innerHTML += html;
+            });
+        }
+    }
+
+    function showLoading() {
+        // Reset counts to 0 during loading
+        document.getElementById('conflictsCount').textContent = '0';
+        document.getElementById('missingMasterCount').textContent = '0';
+        document.getElementById('missingRoomsCount').textContent = '0';
+        document.getElementById('matchingCount').textContent = '0';
+        
+        // Add loading spinner to each section
+        ['conflicts', 'missingFromMaster', 'missingFromRooms', 'matchingEvents'].forEach(id => {
+            document.getElementById(id).innerHTML = `
+                <div class="flex items-center justify-center py-8">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-800"></div>
+                    <span class="ml-2 text-gray-600">Loading...</span>
+                </div>
+            `;
+        });
+    }
+
+
+    </script>
+</body>
+</html>

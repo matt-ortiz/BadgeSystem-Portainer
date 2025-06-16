@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NRSC Senator Calendar</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.2.1/flowbite.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.2.1/datepicker.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.2.1/flowbite.min.css" rel="stylesheet" />
+    <link href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* Copy your existing styles from calendar.html */
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #3b82f6;
+            --background-color: #f8fafc;
+            --text-color: #1e293b;
+            --border-color: #e2e8f0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            background-color: var(--background-color);
+            color: var(--text-color);
+        }
+
+        .event-container {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .event-card {
+            background: white;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+            position: relative;
+            overflow: hidden;
+            border-left: 4px solid var(--primary-color);
+        }
+        .header_date {margin-right: 5px;}
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!-- Header -->
+    <nav class="bg-blue-800 border-b border-blue-700">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center">
+                    <div class="text-white font-bold text-xl">Senator Calendar:</div>
+                    <div class="text-white text-xl ml-2" id="formatted-date"></div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="relative">
+                        <input type="date" id="dateSelector" 
+                               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                    </div>
+                    <a href="/events" class="text-white hover:text-gray-200 flex items-center">
+                        <svg class="h-5 w-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+                        </svg>
+                        View All Events
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        <div id="events-container"></div>
+    </div>
+
+    <script>
+        let currentDate = new Date();
+
+        // Copy all your existing JavaScript functions from calendar.html
+        function showLoading() {
+            const container = document.getElementById('events-container');
+            container.innerHTML = `
+                <div class="flex items-center justify-center py-8">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-800"></div>
+                    <span class="ml-2 text-gray-600">Loading schedule...</span>
+                </div>
+            `;
+        }
+
+        function timeToMinutes(timeStr) {
+            const [time, period] = timeStr.split(/(?=[ap]m)/i);
+            let [hours, minutes] = time.split(':').map(Number);
+            
+            if (period.toLowerCase() === 'pm' && hours !== 12) {
+                hours += 12;
+            }
+            if (period.toLowerCase() === 'am' && hours === 12) {
+                hours = 0;
+            }
+            
+            return hours * 60 + minutes;
+        }
+
+        function cleanLocation(location) {
+            return location.split(',')
+                .map(loc => {
+                    loc = loc.trim();
+                    loc = loc.replace(/NRSC-C1-/, '');  // Remove NRSC-C1- prefix
+                    loc = loc.replace(/NRSC-\d+-/, '');  // Remove other NRSC-#- prefixes
+                    loc = loc.replace(/\s*\(\d+\)$/, '');
+                    loc = loc.replace(/Office Calendar,?\s*/, '');
+                    return loc;
+                })
+                .filter(loc => loc)
+                .join(', ');
+        }
+        
+
+        function updateURL(date) {
+            const dateStr = date.toISOString().split('T')[0];
+            const newUrl = `/senators/${dateStr}`;
+            history.pushState({}, '', newUrl);
+        }
+
+        function isSenatorMeeting(summary) {
+            const terms = [
+                "senator", "sen",
+                "chairman", "chair",
+                "leader",
+                "vice-chair", "vice chair",
+                "pac",
+                "chief"
+            ];
+            const lowercaseSummary = summary.toLowerCase();
+            return terms.some(term => lowercaseSummary.includes(term));
+        }
+
+        async function fetchEvents(date) {
+            showLoading();
+            const dateStr = date.toISOString().split('T')[0];
+            try {
+                const response = await fetch(`/api/senators?date=${dateStr}`);
+                const data = await response.json();
+            
+                updateURL(date);
+
+                // Format and update the date display
+                const options = { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' };
+                const formattedDate = date.toLocaleDateString('en-US', options);
+                document.getElementById('formatted-date').textContent = formattedDate;
+
+                document.getElementById('dateSelector').value = dateStr;
+                
+                const container = document.getElementById('events-container');
+                
+                if (!data.events.length) {
+                    container.innerHTML = `
+                        <div class="bg-white rounded-lg shadow p-6 text-center">
+                            <i class="fas fa-calendar-xmark text-4xl text-gray-400 mb-4"></i>
+                            <h3 class="text-xl font-semibold mb-2">No Senator meetings scheduled</h3>
+                            <p class="text-gray-600">There are no Senator meetings scheduled for this day.</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                container.innerHTML = `
+                    <div class="space-y-6">
+                        ${data.events.map(event => `
+                            <div class="event-card bg-blue-50 border-blue-500" style="border-left-width: 4px;">
+                                <div class="event-title bg-yellow-100">
+                                    <span class="event-time font-semibold text-blue-600">${event.start_time} - ${event.end_time}</span>
+                                    <span class="font-medium ml-2">${event.summary}</span>
+                                </div>
+                                <div class="event-details mt-4 space-y-2">
+                                    ${event.location ? `
+                                        <div class="grid grid-cols-1 md:grid-cols-4">
+                                            <span class="text-gray-600 font-bold">Where:</span>
+                                            <span class="md:col-span-3">${cleanLocation(event.location)}</span>
+                                        </div>
+                                    ` : ''}
+                                    ${event.created_by ? `
+                                        <div class="grid grid-cols-1 md:grid-cols-4">
+                                            <span class="text-gray-600 font-bold">Created by:</span>
+                                            <span class="md:col-span-3">${event.created_by}</span>
+                                        </div>
+                                    ` : ''}
+                                    ${event.attendees?.length ? `
+                                        <div class="grid grid-cols-1 md:grid-cols-4">
+                                            <span class="text-gray-600 font-bold">Who:</span>
+                                            <span class="md:col-span-3">${event.attendees.map(a => a.displayName || a.email).join(', ')}</span>
+                                        </div>
+                                    ` : ''}
+                                    ${event.description ? `
+                                        <div class="grid grid-cols-1 md:grid-cols-4">
+                                            <span class="text-gray-600 font-bold">Description:</span>
+                                            <span class="md:col-span-3 whitespace-pre-wrap">${event.description}</span>
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Error fetching events:', error);
+                container.innerHTML = `
+                    <div class="bg-white rounded-lg shadow p-6 text-center">
+                        <i class="fas fa-exclamation-triangle text-4xl text-red-500 mb-4"></i>
+                        <h3 class="text-xl font-semibold mb-2">Error loading schedule</h3>
+                        <p class="text-gray-600">There was a problem loading the schedule. Please try again later.</p>
+                    </div>
+                `;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if there's a date in the URL
+            const pathParts = window.location.pathname.split('/');
+            const urlDate = pathParts[pathParts.length - 1];
+            
+            if (urlDate && urlDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                const [year, month, day] = urlDate.split('-');
+                currentDate = new Date(year, month - 1, day);
+            } else {
+                currentDate = new Date();
+            }
+
+            document.getElementById('dateSelector').value = currentDate.toISOString().split('T')[0];
+            
+            fetchEvents(currentDate);
+            
+            document.getElementById('dateSelector').addEventListener('change', function(e) {
+                const [year, month, day] = e.target.value.split('-');
+                currentDate = new Date(year, month - 1, day);
+                fetchEvents(currentDate);
+            });
+        });
+    </script>
+</body>
+</html> 

@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+
+{% block title %}Activity Feed{% endblock %}
+
+{% block content %}
+<style type="text/css">
+  #activity {list-style-type: none !important; margin: 0; padding: 0;}
+/*  #activity li {overflow: hidden;}*/
+/*  .photo{width:50%; float: left; margin-right: 10px;}*/
+
+
+#totalCount {
+  position: fixed;  /* This will fix the position relative to the viewport */
+  bottom: 5px;        /* 0px from the bottom of the viewport */
+  left: 5px;         /* 0px from the right of the viewport */
+  padding: 10px;    /* Optional: for some space around your content */
+  background-color: rgba(255, 255, 255, 0.8); /* Optional: for visibility, you can use any color */
+  color: white;     /* Optional: text color */
+  border-radius: 8px; /* Optional: if you want rounded corners */
+  font-weight: 800;
+}
+
+</style>
+
+
+  <div class="container-fluid mt-1">
+
+<!--     <div class="row">
+      <div class="col-md-6">
+        <div class="card mb-4">
+          <div class="card-header pb-0">
+            <h6>Monitoring Activity</h6>
+          </div>
+          <div class="card-body pt-0 pb-2">
+
+            <ul class="mb-0" id="activity">
+              
+            </ul>
+          </div>
+        </div>
+      </div> -->
+
+    <div class="row justify-content-md-center">
+      <div class="col-md-6">
+        <!-- <h6>Monitoring Activity</h6> -->
+
+            <ul class="mb-0" id="activity">
+              
+            </ul>
+        </div>
+      </div>
+
+
+
+    </div><!-- //row -->
+    <div id="totalCount">
+        <a href="/today" id="tc">..</a>
+    </div>
+
+
+    <!-- bottom menu include -->
+    {% include "_menu.html" %}
+  </div><!-- //Container -->
+{% endblock %}
+
+
+{% block scripts %}
+
+<script>
+
+    // Extract Card ID from image source
+    function extractCardIdFromImageSrc(imageSrc) {
+        const regex = /\/(\d+)\.jpg$/;
+        const matches = imageSrc.match(regex);
+        if (matches && matches[1]) {
+            return matches[1];
+        }
+        return null;
+    }
+
+    // Function to trigger Python function via AJAX
+    function fetchCardImageFromServer(cardId) {
+        fetch(`/get_card_image/${cardId}`)
+        .then(response => response.json())
+        .then(data => {
+            console.log(data)
+            const imageElements = document.querySelectorAll(`.photo[src*="${cardId}.jpg"]`);
+            imageElements.forEach(imageElement => {
+              imageElement.src = data.img_path;
+            });
+        })
+        .catch(error => {
+            console.error('Error fetching card image:', error);
+        });
+    }
+
+
+    // Function to check for missing images and trigger Python function
+    function checkForMissingImages() {
+        const cardElements = document.querySelectorAll('.card');
+        cardElements.forEach(cardElement => {
+            const imageElement = cardElement.querySelector('.photo');
+            const cardId = extractCardIdFromImageSrc(imageElement.src);
+            const img = new Image();
+
+            img.onload = function() {
+                // Image exists, do nothing
+            };
+
+            img.onerror = function() {
+                // Image is missing, call the Python function
+                console.log("missing image: " + cardId +".jpg") 
+                fetchCardImageFromServer(cardId);
+            };
+
+            img.src = imageElement.src;
+        });
+    }
+
+
+    // function getCurrentTime() {
+    //   const now = new Date();
+    //   const options = { hour: 'numeric', minute: 'numeric', second: 'numeric', hour12: true };
+    //   return now.toLocaleTimeString('en-US', options);
+    // }
+
+    let currentData = [];
+
+    // function updateList() {
+    //     fetch('{{ url_for("api_AMAG_badging") }}')
+    //     .then(response => response.json())
+    //     .then(newData => {
+    //     // Compare the new data with the existing data
+    //     if (JSON.stringify(newData) !== JSON.stringify(currentData)) {
+    //         currentData = newData; // Update the existing data
+
+    //         const dataList = document.getElementById("activity");
+    //         dataList.innerHTML = '';  // Clear the list
+
+    //         for (const item of newData) {
+    //             const listItem = document.createElement("li");
+    //             const conditionClass = item.TxnConditionName.includes("Wrong") ? "text-danger text-uppercase font-weight-bold" : "";
+
+
+    //             listItem.innerHTML = `
+    //               <div class="card card-frame mb-3">
+    //               <div class="card-body">
+    //                 <div class="row">
+    //                   <div class="col-6 col-md-5">
+    //                     <img class="photo CardID_${item.CardNumber} img-fluid shadow border-radius-xl" src="static/staff/${item.CardNumber}.jpg">
+    //                   </div>
+    //                   <div class="col-6 col-md-7">
+    //                       <span>${item.DateTimeOfTxn}</span>
+    //                       <h3>${item.Name}</h3>
+    //                       <p>
+    //                           <span class="text-dark text-uppercase text-s font-weight-bold my-2">${item.WhereName}</span><br />
+    //                           <span class="${conditionClass}">${item.TxnConditionName}</span>
+
+    //                       </p>
+    //                   </div>
+    //                 </div>
+    //               </div></div>
+    //             `;
+    //             dataList.appendChild(listItem);
+    //           }
+    //           checkForMissingImages()
+    //         }else {
+    //             // const currentTime = getCurrentTime();
+    //             // console.log(`No change at ${currentTime}`); // Log a message with the current time
+    //         }
+
+    //     })
+    //     .catch(error => console.error('Error fetching AMAG bagging data:', error));
+    // }
+
+    function updateList() {
+        fetch('{{ url_for("api_AMAG_badging") }}')
+        .then(response => response.json())
+        .then(newData => {
+            // Compare the new data with the existing data
+            if (JSON.stringify(newData) !== JSON.stringify(currentData)) {
+                currentData = newData; // Update the existing data
+
+                const dataList = document.getElementById("activity");
+                dataList.innerHTML = '';  // Clear the list
+
+                // Define an array of rooms to exclude
+                const excludedRooms = ["NRSC Server Room", "NRSC-Daniel Office", "Another Room 2", "Another Room 3"];
+
+                for (const item of newData) {
+                    // Skip the iteration if the room is in the excluded list
+                    if (excludedRooms.includes(item.WhereName)) {
+                        continue;
+                    }
+
+                    const listItem = document.createElement("li");
+                    const conditionClass = item.TxnConditionName.includes("Wrong") ? "text-danger text-uppercase font-weight-bold" : "";
+
+                    listItem.innerHTML = `
+                      <div class="card card-frame mb-3">
+                      <div class="card-body">
+                        <div class="row">
+                          <div class="col-6 col-md-5">
+                            <img class="photo CardID_${item.CardNumber} img-fluid shadow border-radius-xl" src="static/staff/${item.CardNumber}.jpg">
+                          </div>
+                          <div class="col-6 col-md-7">
+                              <span>${item.DateTimeOfTxn}</span>
+                              <h3>${item.Name}</h3>
+                              <p>
+                                  <span class="text-dark text-uppercase text-s font-weight-bold my-2">${item.WhereName}</span><br />
+                                  <span class="${conditionClass}">${item.TxnConditionName}</span>
+                              </p>
+                          </div>
+                        </div>
+                      </div></div>
+                    `;
+                    dataList.appendChild(listItem);
+                }
+                checkForMissingImages()
+            } else {
+                // Optional: Log a message if there's no change
+            }
+        })
+        .catch(error => console.error('Error fetching AMAG bagging data:', error));
+    }
+
+
+    setInterval(updateList, 2000);  // Refresh the data every second (1000 ms)
+    updateList();  // Initial data fetch
+
+
+
+    function updateCount() {
+        fetch('http://10.5.0.49/api/AMAG/today?api_key=Wp4GB88gwX4mpbFAj3QyV6e3s')
+        .then(response => response.json())
+        .then(newData => {
+        // Compare the new data with the existing data
+            const total_count = document.getElementById("tc");
+            total_count.innerHTML = newData.total_count
+        })
+        .catch(error => console.error('Error fetching AMAG today data:', error));
+    }
+
+    setInterval(updateCount, 5000);  // Refresh the data every second (1000 ms)
+    updateCount();  // Initial data fetch
+
+
+</script>
+
+{% endblock %}

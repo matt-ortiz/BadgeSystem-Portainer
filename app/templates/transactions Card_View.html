@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+
+{% block title %}Activity Feed{% endblock %}
+
+{% block content %}
+<style type="text/css">
+  #activity {list-style-type: none !important; margin: 0; padding: 0;}
+/*  #activity li {overflow: hidden;}*/
+/*  .photo{width:50%; float: left; margin-right: 10px;}*/
+
+</style>
+
+
+  <div class="container-fluid mt-1">
+
+<!--     <div class="row">
+      <div class="col-md-6">
+        <div class="card mb-4">
+          <div class="card-header pb-0">
+            <h6>Monitoring Activity</h6>
+          </div>
+          <div class="card-body pt-0 pb-2">
+
+            <ul class="mb-0" id="activity">
+              
+            </ul>
+          </div>
+        </div>
+      </div> -->
+
+    <div class="row justify-content-md-center">
+      <div class="col-md-6">
+        <h6>Monitoring Activity</h6>
+
+            <ul class="mb-0" id="activity">
+              
+            </ul>
+        </div>
+      </div>
+
+
+
+    </div><!-- //row -->
+  </div><!-- //Container -->
+{% endblock %}
+
+
+{% block scripts %}
+
+<script>
+
+    // Extract Card ID from image source
+    function extractCardIdFromImageSrc(imageSrc) {
+        const regex = /\/(\d+)\.jpg$/;
+        const matches = imageSrc.match(regex);
+        if (matches && matches[1]) {
+            return matches[1];
+        }
+        return null;
+    }
+
+    // Function to trigger Python function via AJAX
+    function fetchCardImageFromServer(cardId) {
+        fetch(`/get_card_image/${cardId}`)
+        .then(response => response.json())
+        .then(data => {
+            console.log(data)
+            const imageElements = document.querySelectorAll(`.photo[src*="${cardId}.jpg"]`);
+            imageElements.forEach(imageElement => {
+              imageElement.src = data.img_path;
+            });
+        })
+        .catch(error => {
+            console.error('Error fetching card image:', error);
+        });
+    }
+
+
+    // Function to check for missing images and trigger Python function
+    function checkForMissingImages() {
+        const cardElements = document.querySelectorAll('.card');
+        cardElements.forEach(cardElement => {
+            const imageElement = cardElement.querySelector('.photo');
+            const cardId = extractCardIdFromImageSrc(imageElement.src);
+            const img = new Image();
+
+            img.onload = function() {
+                // Image exists, do nothing
+            };
+
+            img.onerror = function() {
+                // Image is missing, call the Python function
+                console.log("missing image: " + cardId +".jpg") 
+                fetchCardImageFromServer(cardId);
+            };
+
+            img.src = imageElement.src;
+        });
+    }
+
+
+    function getDateFromUrl() {
+        const queryString = window.location.search;
+        const urlParams = new URLSearchParams(queryString);
+        return urlParams.get('date');
+    }
+
+
+    let currentData = [];
+
+    function updateList() {
+        const date = getDateFromUrl();
+        console.log(date)
+        // Choose endpoint based on whether date is provided
+        let endpointUrl = date ? '{{ url_for("api_AMAG_badging_date") }}' : '{{ url_for("api_AMAG_badging") }}';
+        
+        if (date) {
+            endpointUrl += `?date=${date}`;
+        }
+
+        fetch(endpointUrl)
+        .then(response => response.json())
+        .then(newData => {
+        // Compare the new data with the existing data
+        if (JSON.stringify(newData) !== JSON.stringify(currentData)) {
+            currentData = newData; // Update the existing data
+
+            const dataList = document.getElementById("activity");
+            dataList.innerHTML = '';  // Clear the list
+
+            for (const item of newData) {
+                const listItem = document.createElement("li");
+                const conditionClass = item.TxnConditionName.includes("Wrong") ? "text-danger text-uppercase font-weight-bold" : "";
+
+
+                listItem.innerHTML = `
+                  <div class="card card-frame mb-3">
+                  <div class="card-body">
+                    <div class="row">
+                      <div class="col-md-5">
+                        <img class="photo CardID_${item.CardNumber} img-fluid shadow border-radius-xl" src="static/staff/${item.CardNumber}.jpg">
+                      </div>
+                      <div class="col-md-7">
+                          <span>${item.DateTimeOfTxn}</span>
+                          <h3>${item.Name}</h3>
+                          <p>
+                              <span class="text-dark text-uppercase text-s font-weight-bold my-2">${item.WhereName}</span><br />
+                              <span class="${conditionClass}">${item.TxnConditionName}</span>
+
+                          </p>
+                      </div>
+                    </div>
+                  </div></div>
+                `;
+                dataList.appendChild(listItem);
+              }
+              checkForMissingImages()
+            }else {
+                // const currentTime = getCurrentTime();
+                // console.log(`No change at ${currentTime}`); // Log a message with the current time
+            }
+
+        })
+        .catch(error => console.error('Error fetching AMAG bagging data:', error));
+    }
+
+    setInterval(updateList, 5000);  // Refresh the data every second (1000 ms)
+    updateList();  // Initial data fetch
+</script>
+
+{% endblock %}

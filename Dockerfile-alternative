@@ -1,0 +1,35 @@
+FROM tiangolo/uwsgi-nginx-flask:python3.11
+
+# Set working directory
+WORKDIR /app
+
+# Install ODBC dependencies
+RUN apt-get update && \
+    apt-get install -y \
+    unixodbc \
+    unixodbc-dev \
+    freetds-dev \
+    freetds-bin \
+    tdsodbc && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first for better layer caching
+COPY requirements.txt /app/requirements.txt
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application files
+COPY app/ /app/
+
+# Set environment variables
+ENV FLASK_APP=main.py
+ENV PYTHONPATH=/app
+
+# Create directories for caching
+RUN mkdir -p /app/flask_cache && \
+    chmod 755 /app/flask_cache
+
+# Expose ports
+EXPOSE 80 443

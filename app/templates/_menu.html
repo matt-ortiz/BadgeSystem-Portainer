@@ -1,0 +1,10 @@
+{% if current_user.is_authenticated and current_user.role == 'admin' %}
+<div id="sticky">
+    <p style="opacity:0.5; border-bottom: 1px solid #777; padding-bottom:3px;">{{ current_user.id }}</p>
+
+    <div>
+        <a href="/all">Admin</a><br />
+    </div>
+    
+</div>
+{% endif %}

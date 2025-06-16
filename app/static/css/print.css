@@ -1,0 +1,73 @@
+/* Hide non-essential elements */
+#sticky, .sortmenu, small, .p_meta small {
+    display: none !important;
+}
+
+/* Clean up styling */
+.p_meta span {
+    border-bottom: none !important;
+}
+
+.grid-list li {
+    background: none !important;
+    border: none !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    padding: 5px !important;
+    margin-bottom: 5px !important;
+    border-radius: 0px !important;
+}
+
+.border-radius-xl {border-radius: 0px !important;}
+
+.export-options {display: none !important;}
+
+
+/* Optimize images */
+.photo {
+    width: 60px !important;
+    height: auto !important;
+    max-height: 60px !important;
+    object-fit: contain !important;
+    print-color-adjust: economy !important;
+    -webkit-print-color-adjust: economy !important;
+}
+
+/* Optimize grid layout for print */
+.grid-container {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 5px !important;
+}
+
+/* Optimize text for print */
+.p_meta {
+    font-size: 9pt !important;
+    line-height: 1.2 !important;
+    padding-left: 5px !important;
+}
+
+/* Set print-specific page properties */
+@page {
+    margin: 0.5cm !important;
+    size: portrait !important;
+}
+
+/* Force background colors to print */
+* {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+}
+
+/* Ensure proper page breaks */
+h1, h2, h3 {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+}
+
+/* Reduce container padding */
+.container-fluid {
+    padding: 0 !important;
+    margin: 0 !important;
+}

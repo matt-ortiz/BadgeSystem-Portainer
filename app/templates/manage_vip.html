@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block title %}Manage VIP List{% endblock %}
+
+{% block content %}
+<style type="text/css">
+    .photo {
+        height: 150px;
+    }
+    .admin-container {
+        padding: 2rem;
+        background-color: #f8f9fa;
+        min-height: calc(100vh - 100px);
+    }
+    .admin-header {
+        background: white;
+        padding: 1rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+    }
+    .admin-nav {
+        display: flex;
+        gap: 1rem;
+        padding: 1rem 0;
+        border-top: 1px solid #eee;
+        margin-top: 1rem;
+    }
+    .admin-nav a {
+        padding: 0.5rem 1rem;
+        text-decoration: none;
+        color: #666;
+        border-radius: 4px;
+        transition: all 0.3s ease;
+    }
+    .admin-nav a:hover {
+        background: #f0f0f0;
+        color: #333;
+    }
+    .admin-nav a.active {
+        background: #007bff;
+        color: white;
+    }
+    .admin-card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    .columns {
+        columns: 3;
+        column-gap: 20px;
+        list-style-type: none;
+        padding: 0;
+    }
+    .columns li {
+        break-inside: avoid;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+    }
+    .form-group {
+        margin-bottom: 1rem;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+    }
+    .form-control {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+    .admin-card .btn {
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        border: none;
+        cursor: pointer;
+        background: #007bff;
+        color: white;
+        transition: all 0.3s ease;
+    }
+    .btn:hover {
+        background: #0056b3;
+    }
+    .btn-danger {
+        background: #dc3545;
+    }
+    .btn-danger:hover {
+        background: #c82333;
+    }
+</style>
+
+<div class="admin-container">
+    {% include 'includes/admin_nav.html' %}
+
+    <div class="admin-card">
+        <h2>Add New VIP Person</h2>
+        <form method="post" class="row">
+            <div class="col-md-5">
+                <div class="form-group">
+                    <label for="CardID">Select Person:</label>
+                    <select id="CardID" name="CardID" class="form-control" required>
+                        {% for cardholder in cardholders %}
+                        <option value="{{ cardholder.CardID }}">{{ cardholder.FirstName }} {{ cardholder.LastName }} (CardID: {{ cardholder.CardID }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-5">
+                <div class="form-group">
+                    <label for="NinjaID">NinjaID:</label>
+                    <input type="text" id="NinjaID" name="NinjaID" class="form-control" required>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="form-group">
+                    <label>&nbsp;</label>
+                    <button type="submit" class="btn btn-primary w-100">Add VIP</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="admin-card">
+        <h2>VIP People List</h2>
+        <ul class="columns">
+            {% for person in vip_data %}
+            <li class="d-flex">
+                <div>
+                    <img class="photo CardID_{{ person.CardID }} img-fluid shadow border-radius-xl me-3" src="static/staff/{{ person.CardID }}.jpg">
+                </div>
+                <div>
+                    <h4 class="mb-2">{{ person.Name }}</h4>
+                    <p class="mb-2">
+                        CardID: {{ person.CardID }}<br>
+                        NinjaID: {{ person.NinjaID }}
+                    </p>
+                    <form action="{{ url_for('ignore.remove_vip', card_id=person.CardID) }}" method="post" style="display:inline;">
+                        <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+                    </form>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Badge Assignments</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 10pt;
+            line-height: 1.3;
+        }
+        
+        h1 {
+            font-size: 14pt;
+            margin-bottom: 10px;
+        }
+        
+        .header-info {
+            margin-bottom: 20px;
+        }
+        
+        .header-stats {
+            display: flex;
+            gap: 30px;
+            font-size: 11pt;
+            color: #666;
+            margin-top: 10px;
+            white-space: nowrap;
+            font-size: 12px;
+            padding-right: 10px;
+        }
+        
+        .stat-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            white-space: nowrap;
+        }
+        
+        .stat-active { color: #4CAF50; }
+        .stat-inactive { color: #f44336; }
+        
+        .date {
+            font-size: 12px ;
+            color: #666;
+            padding-right: 10px;
+        }
+        
+        .badge-grid {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        
+        .badge-grid th {
+            background-color: #f5f5f5;
+            padding: 8px;
+            text-align: left;
+            border-bottom: 2px solid #ddd;
+            font-weight: bold;
+        }
+        
+        .badge-grid td {
+            padding: 6px 8px;
+            border-bottom: 1px solid #ddd;
+            vertical-align: middle;
+        }
+        
+        .photo {
+            width: 50px;
+            height: auto;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 5px;
+            flex-shrink: 0;
+        }
+        
+        .status-active { background-color: #4CAF50; }
+        .status-inactive { background-color: #f44336; }
+        .status-lost { background-color: #ff9800; }
+        .status-watch { background-color: #2196F3; }
+        
+        @page {
+            margin: 1cm;
+            size: letter portrait;
+            @bottom-right {
+                /* content: "Page " counter(page) " of " counter(pages); */
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header-info">
+        <h1>Badge Assignments</h1>
+        <div class="header-stats">
+            <span class="date">{{ server_time.strftime('%B %d, %Y') }}</span>
+            <span class="stat-item stat-active">
+                <span class="status-indicator status-active"></span>
+                Active: {{ assignments|rejectattr('Inactive')|rejectattr('ForcedInactive')|rejectattr('Lost')|list|length }}
+            </span>
+            <span class="stat-item stat-inactive">
+                <span class="status-indicator status-inactive"></span>
+                Inactive: {{ assignments|selectattr('Inactive')|list|length + assignments|selectattr('ForcedInactive')|list|length + assignments|selectattr('Lost')|list|length }}
+            </span>
+        </div>
+    </div>
+
+    <table class="badge-grid">
+        <thead>
+            <tr>
+                <th>Photo</th>
+                <th>Name</th>
+                <th>Card ID</th>
+                <th>Card Number</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for assignment in assignments %}
+            <tr>
+                <td>
+                    <img class="photo" src="{{ assignment.optimized_image }}"
+                         alt="{{ assignment.FirstName }} {{ assignment.LastName }}">
+                </td>
+                <td>{{ assignment.LastName }}, {{ assignment.FirstName }}</td>
+                <td>{{ assignment.CardID }}</td>
+                <td>{{ assignment.CardNumber if assignment.CardNumber else 'N/A' }}</td>
+                <td>
+                    {% if assignment.Lost %}
+                        <span class="status-indicator status-lost"></span>Lost
+                    {% elif assignment.Inactive or assignment.ForcedInactive %}
+                        <span class="status-indicator status-inactive"></span>Inactive
+                    {% elif assignment.CardWatch %}
+                        <span class="status-indicator status-watch"></span>Watch
+                    {% else %}
+                        <span class="status-indicator status-active"></span>Active
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html> 

@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NRSC Calendar</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.2.1/flowbite.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.2.1/datepicker.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.2.1/flowbite.min.css" rel="stylesheet" />
+    <link href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #3b82f6;
+            --background-color: #f8fafc;
+            --text-color: #1e293b;
+            --border-color: #e2e8f0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            background-color: var(--background-color);
+            color: var(--text-color);
+        }
+
+        /* Keep your existing styles below this line */
+        .event-container {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .event-card {
+            background: white;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+            position: relative;
+            overflow: hidden;
+            border-left: 4px solid var(--primary-color);
+        }
+        .header_date {margin-right: 5px;}
+    </style>
+
+    <!-- <link rel="stylesheet" href="{{ url_for('static', filename='css/calendar_print.css') }}" media="print"> -->
+<style type="text/css" media="print">
+    @media print {
+        /* Force override everything */
+        * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+        }
+        [class*="bg-"] {
+            background: none !important;
+        }
+        /* Clean header */
+        nav {
+            background: none !important;
+            border: none !important;
+            padding: 0 !important;
+        }
+
+        nav div {
+            color: #000000 !important;
+        }
+        nav .flex.h-16{
+            height:auto;
+        }
+        /* Hide UI elements */
+        nav .space-x-4 {
+            display: none !important;
+        }
+
+        /* Minimalist event cards */
+        .event-card {
+            border: none !important;
+            padding: 0.2cm !important;
+            margin-top: 0px !important;
+            margin-bottom: 0px !important;
+/*            margin-bottom: 0.3cm !important;*/
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+            background: white !important;
+            box-shadow: none !important;
+        }
+
+        /* Clean event details */
+        .event-details {
+            margin-top: 0.1cm !important;
+            font-size: 12px;
+            line-height: 12px;
+        }
+
+        .event-title {
+            font-size: 12pt !important;
+            border-bottom: 1px solid #000 !important;
+            padding-bottom: 0.1cm !important;
+        }
+
+        /* Simple grid layout */
+        .grid {
+            display: block !important;
+        }
+
+        /* Container cleanup */
+        .container, .max-w-7xl {
+            max-width: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        /* Standard page format */
+        @page {
+            margin: 1cm !important;
+            size: portrait !important;
+        }
+    }
+</style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!-- New Header matching calendar-sync -->
+    <nav class="bg-blue-800 border-b border-blue-700">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center">
+                    <div class="text-white font-bold text-xl">NRSC Calendar:</div>
+                    <div class="text-white text-xl ml-2" id="formatted-date"></div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="relative">
+                        <input type="date" id="dateSelector" 
+                               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                    </div>
+                    <a href="/calendar-sync" class="text-white hover:text-gray-200 flex items-center">
+                        <svg class="h-5 w-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+                        </svg>
+                        View Sync Status
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        <div id="events-container"></div>
+    </div>
+
+    <script>
+        let currentDate = new Date();
+
+        function showLoading() {
+            const container = document.getElementById('events-container');
+            container.innerHTML = `
+                <div class="flex items-center justify-center py-8">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-800"></div>
+                    <span class="ml-2 text-gray-600">Loading schedule...</span>
+                </div>
+            `;
+        }
+
+        function timeToMinutes(timeStr) {
+            const [time, period] = timeStr.split(/(?=[ap]m)/i);
+            let [hours, minutes] = time.split(':').map(Number);
+            
+            if (period.toLowerCase() === 'pm' && hours !== 12) {
+                hours += 12;
+            }
+            if (period.toLowerCase() === 'am' && hours === 12) {
+                hours = 0;
+            }
+            
+            return hours * 60 + minutes;
+        }
+
+        function cleanLocation(location) {
+            return location.split(',')
+                .map(loc => {
+                    loc = loc.trim();
+                    loc = loc.replace(/NRSC-\d+-/, '');
+                    loc = loc.replace(/\s*\(\d+\)$/, '');
+                    loc = loc.replace(/Office Calendar,?\s*/, '');
+                    return loc;
+                })
+                .filter(loc => loc)
+                .join(', ');
+        }
+
+        function updateURL(date) {
+            const dateStr = date.toISOString().split('T')[0];
+            const newUrl = `/events/${dateStr}`;
+            history.pushState({}, '', newUrl);
+        }
+
+        async function fetchEvents(date) {
+            showLoading();
+            const dateStr = date.toISOString().split('T')[0];
+            try {
+                const response = await fetch(`/api/events?date=${dateStr}`);
+                const data = await response.json();
+            
+                updateURL(date);
+
+                // Format and update the date display
+                const options = { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' };
+                const formattedDate = date.toLocaleDateString('en-US', options);
+                document.getElementById('formatted-date').textContent = formattedDate;
+                console.log(formattedDate)
+
+
+                data.events.sort((a, b) => {
+                    return timeToMinutes(a.start_time) - timeToMinutes(b.start_time);
+                });
+                
+                document.getElementById('dateSelector').value = dateStr;
+                
+                const container = document.getElementById('events-container');
+                
+                if (!data.events.length) {
+                    container.innerHTML = `
+                        <div class="bg-white rounded-lg shadow p-6 text-center">
+                            <i class="fas fa-calendar-xmark text-4xl text-gray-400 mb-4"></i>
+                            <h3 class="text-xl font-semibold mb-2">No events scheduled</h3>
+                            <p class="text-gray-600">There are no events scheduled for this day.</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                container.innerHTML = `
+                    <div class="space-y-6">
+                        ${data.events.map(event => `
+                            <div class="event-card">
+                                <div class="event-title">
+                                    <span class="event-time font-semibold text-blue-600">${event.start_time} - ${event.end_time}</span>
+                                    <span class="font-medium ml-2">${event.summary}</span>
+                                </div>
+                                <div class="event-details mt-4 space-y-2">
+                                    ${event.location ? `
+                                        <div class="grid grid-cols-1 md:grid-cols-4">
+                                            <span class="text-gray-600 font-bold">Where:</span>
+                                            <span class="md:col-span-3">${cleanLocation(event.location)}</span>
+                                        </div>
+                                    ` : ''}
+                                    ${event.created_by ? `
+                                        <div class="grid grid-cols-1 md:grid-cols-4">
+                                            <span class="text-gray-600 font-bold">Created by:</span>
+                                            <span class="md:col-span-3">${event.created_by}</span>
+                                        </div>
+                                    ` : ''}
+                                    ${event.attendees?.length ? `
+                                        <div class="grid grid-cols-1 md:grid-cols-4">
+                                            <span class="text-gray-600 font-bold">Who:</span>
+                                            <span class="md:col-span-3">${event.attendees.map(a => a.displayName || a.email).join(', ')}</span>
+                                        </div>
+                                    ` : ''}
+                                    ${event.description ? `
+                                        <div class="grid grid-cols-1 md:grid-cols-4">
+                                            <span class="text-gray-600 font-bold">Description:</span>
+                                            <span class="md:col-span-3 whitespace-pre-wrap">${event.description}</span>
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Error fetching events:', error);
+                document.getElementById('events-container').innerHTML = `
+                    <div class="bg-white rounded-lg shadow p-6 text-center">
+                        <i class="fas fa-exclamation-triangle text-4xl text-red-500 mb-4"></i>
+                        <h3 class="text-xl font-semibold mb-2">Error loading schedule</h3>
+                        <p class="text-gray-600">There was a problem loading the schedule. Please try again later.</p>
+                    </div>
+                `;
+            }
+        }
+
+        function changeDate(days) {
+            currentDate.setDate(currentDate.getDate() + days);
+            fetchEvents(currentDate);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if there's a date in the URL
+            const pathParts = window.location.pathname.split('/');
+            const urlDate = pathParts[pathParts.length - 1];
+            
+            if (urlDate && urlDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                // If valid date in URL, use it
+                const [year, month, day] = urlDate.split('-');
+                currentDate = new Date(year, month - 1, day);
+            } else {
+                // Otherwise use today's date
+                currentDate = new Date();
+            }
+
+            // Set the date picker value
+            document.getElementById('dateSelector').value = currentDate.toISOString().split('T')[0];
+            
+            // Initial load
+            fetchEvents(currentDate);
+            
+            // Add event listener for date changes
+            document.getElementById('dateSelector').addEventListener('change', function(e) {
+                // Fix the timezone issue by parsing the date parts
+                const [year, month, day] = e.target.value.split('-');
+                currentDate = new Date(year, month - 1, day);  // month is 0-based in JS Date
+                fetchEvents(currentDate);
+                console.log("currentDate: " + currentDate);
+            });
+        });
+    </script>
+</body>
+</html>

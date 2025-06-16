@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Stats Ignore List{% endblock %}
+
+{% block header %}
+<link rel="stylesheet" href="/static/css/admin.css">
+{% endblock %}
+
+{% block content %}
+<style>
+    .form-group {
+        margin-bottom: 1rem;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+    }
+    .stats-ignore-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 1rem;
+    }
+    .stats-ignore-table th,
+    .stats-ignore-table td {
+        padding: 12px;
+        border-bottom: 1px solid #eee;
+    }
+    .stats-ignore-table th {
+        background: #f8f9fa;
+        font-weight: 500;
+        text-align: left;
+    }
+    .header-controls {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.5rem;
+    }
+</style>
+
+<div class="admin-container">
+    <div class="admin-card">
+        <div class="header-controls">
+            <h2 class="mb-0">Manage Stats Ignore List</h2>
+            <a href="{{ url_for('badge_stats') }}" class="btn btn-outline-secondary">Back to Badge Stats</a>
+        </div>
+        
+        <form method="POST" action="{{ url_for('ignore.manage_stats_ignore') }}" class="mb-4">
+            <div class="form-group">
+                <label for="CardID">Select User to Ignore:</label>
+                <select name="CardID" id="CardID" class="form-control" required>
+                    <option value="">Select a user...</option>
+                    {% for cardholder in cardholders %}
+                        <option value="{{ cardholder.CardID }}">
+                            {{ cardholder.FirstName }} {{ cardholder.LastName }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Add to Ignore List</button>
+        </form>
+
+        <h3>Currently Ignored Users</h3>
+        <table class="stats-ignore-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th width="100">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in ignore_data %}
+                    <tr>
+                        <td>{{ user.Name }}</td>
+                        <td>
+                            <form method="POST" action="{{ url_for('ignore.remove_stats_ignore', card_id=user.CardID) }}" style="display: inline;">
+                                <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %} 

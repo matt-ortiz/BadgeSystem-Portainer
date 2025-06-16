@@ -1,0 +1,90 @@
+<!-- Improved Admin Navigation using Bootstrap components -->
+<nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom">
+    <div class="container-fluid">
+        <!-- Replace the h1 with a navbar-brand for better sizing -->
+        <span class="navbar-brand fw-bold d-flex align-items-center">
+            <img src="/static/favicon/badgeactivity.svg" alt="Badge System Logo" class="me-2" height="24">
+            Badge Administration
+        </span>
+
+        <!-- Mobile toggle button -->
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#adminNavbar"
+            aria-controls="adminNavbar" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <!-- Collapsible navigation content -->
+        <div class="collapse navbar-collapse" id="adminNavbar">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'ignore.all_badges' %}active{% endif %}"
+                        href="{{ url_for('ignore.all_badges') }}">Badge Holders</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'ignore.view_badges' %}active{% endif %}"
+                        href="{{ url_for('ignore.view_badges') }}">All Badges</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'get_activity' %}active{% endif %}"
+                        href="{{ url_for('get_activity') }}">Activity Feed</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'ignore.manage_vip' %}active{% endif %}"
+                        href="{{ url_for('ignore.manage_vip') }}">VIP List</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'ignore.manage_ignore' %}active{% endif %}"
+                        href="{{ url_for('ignore.manage_ignore') }}">Ignored Users</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'badge_stats' %}active{% endif %}"
+                        href="{{ url_for('badge_stats') }}">Badge Stats</a>
+                </li>
+            </ul>
+
+            <!-- Prominent Back to Feed button -->
+            <div class="d-flex">
+                <a href="/" class="btn btn-primary">
+                    <i class="fas fa-arrow-left me-1"></i> Back to Feed
+                </a>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<!-- Optional: Add custom CSS to further style the navigation -->
+<style>
+    .navbar-nav .nav-link.active {
+        font-weight: 600;
+        color: #0d6efd;
+        /* Bootstrap primary color */
+        border-bottom: 2px solid #0d6efd;
+    }
+
+    .navbar-brand {
+        font-size: 1.25rem;
+        /* Smaller than default h1 */
+    }
+
+    /* Add some spacing and style refinements */
+    .navbar {
+        padding: 0.5rem 1rem;
+    }
+
+    .nav-link {
+        padding: 0.5rem 1rem;
+        transition: all 0.2s ease;
+    }
+
+    .nav-link:hover {
+        background-color: rgba(13, 110, 253, 0.05);
+    }
+
+    /* Style for the Back to Feed button */
+    #adminNavbar .btn-primary {
+        color: #fff;
+        background-color: #007bff;
+        border-color: #007bff;
+        }
+
+</style>
