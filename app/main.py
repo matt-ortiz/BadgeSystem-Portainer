@@ -39,21 +39,24 @@ app = Flask(__name__)
 app.config.update(
     SECRET_KEY=os.getenv("SECRET_KEY"),
     
-    # Session configuration
+    # Session configuration - More robust settings for TV dashboards
     SESSION_COOKIE_SECURE=False,  # Set to True if using HTTPS
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE='Lax',
-    PERMANENT_SESSION_LIFETIME=timedelta(days=365),  # 1 Year session
+    SESSION_COOKIE_NAME='badge_session',  # Custom cookie name to avoid conflicts
+    PERMANENT_SESSION_LIFETIME=timedelta(days=365),  # 1 year sessions
     
     # Cache configuration
     CACHE_TYPE="FileSystemCache",
     CACHE_DIR="/app/flask_cache/",
     CACHE_DEFAULT_TIMEOUT=300,
     
-    # Additional Flask-Login settings
-    REMEMBER_COOKIE_DURATION=timedelta(days=7),
+    # Additional Flask-Login settings - More robust for long sessions
+    REMEMBER_COOKIE_DURATION=timedelta(days=365),  # 365 days
     REMEMBER_COOKIE_SECURE=False,  # Set to True if using HTTPS
     REMEMBER_COOKIE_HTTPONLY=True,
+    REMEMBER_COOKIE_NAME='badge_remember',  # Custom remember cookie name
+    REMEMBER_COOKIE_REFRESH_EACH_REQUEST=True,  # Refresh remember cookie on each request
 )
 
 CORS(app)
@@ -79,10 +82,32 @@ app.register_blueprint(calendar_sync_blueprint)
 
 @login_manager.user_loader
 def load_user(user_id):
-    if user_id in users_data:
-        user_role = users_data[user_id]["role"]
-        return User(id=user_id, role=user_role)
-    return None
+    """Enhanced user loader with better error handling"""
+    try:
+        if user_id in users_data:
+            user_role = users_data[user_id]["role"]
+            return User(id=user_id, role=user_role)
+        else:
+            print(f"User {user_id} not found in users_data")
+            return None
+    except Exception as e:
+        print(f"Error loading user {user_id}: {e}")
+        return None
+
+
+@login_manager.needs_refresh_handler
+def refresh_handler():
+    """Handle session refresh - return user to login"""
+    return redirect(url_for('login'))
+
+
+@login_manager.unauthorized_handler
+def unauthorized_handler():
+    """Handle unauthorized access - check if it's an API call"""
+    if request.path.startswith('/api/'):
+        return jsonify({"error": "Authentication required", "redirect": "/login"}), 401
+    else:
+        return redirect(url_for('login'))
 
 
 
@@ -111,21 +136,38 @@ def login():
         try:
             if bcrypt.check_password_hash(user_data["password"], password):
                 user_obj = User(user, user_data["role"])
-                # Make session permanent and login user
+                
+                # Enhanced session setup for TV dashboards
                 session.permanent = True
-                login_user(user_obj, remember=True)  # Add remember=True for longer sessions
+                session.modified = True  # Force session save
                 
-                # Clear any cache issues
-                cache.clear()
+                # Clear any existing cache issues
+                try:
+                    cache.clear()
+                except Exception as e:
+                    print(f"Warning: Could not clear cache: {e}")
                 
-                flash(f"Welcome back, {user}!", "success")
-                return redirect(url_for("index"))
+                # Login with remember=True for long sessions
+                login_successful = login_user(user_obj, remember=True, duration=timedelta(days=365))
+                
+                if login_successful:
+                    print(f"User {user} logged in successfully with permanent session")
+                    flash(f"Welcome back, {user}! Session valid for 1 year.", "success")
+                    return redirect(url_for("index"))
+                else:
+                    print(f"Login failed for user {user} - login_user returned False")
+                    flash("Login failed. Please try again.", "danger")
+                    return render_template("login.html", form=form)
             else:
                 flash("Invalid credentials", "danger")
                 return render_template("login.html", form=form)
-        except ValueError:
-            # This will catch bcrypt ValueError including "Invalid salt"
+        except ValueError as e:
+            print(f"Password verification error for user {user}: {e}")
             flash("An error occurred. Please try again.", "danger")
+            return render_template("login.html", form=form)
+        except Exception as e:
+            print(f"Unexpected login error for user {user}: {e}")
+            flash("An unexpected error occurred. Please try again.", "danger")
             return render_template("login.html", form=form)
 
     return render_template("login.html", form=form)
@@ -229,6 +271,29 @@ def clear_cache():
         flash(f"Error clearing cache: {e}", "danger")
     
     return redirect(request.referrer or url_for('index'))
+
+
+# Debug route for session information
+@app.route('/admin/session-debug')
+@login_required
+@requires_roles('admin', 'superuser')
+def session_debug():
+    """
+    Show session debug information - useful for troubleshooting
+    """
+    debug_info = {
+        "current_user_authenticated": current_user.is_authenticated,
+        "current_user_id": getattr(current_user, 'id', 'No ID'),
+        "current_user_role": getattr(current_user, 'role', 'No role'),
+        "session_permanent": session.permanent,
+        "session_keys": list(session.keys()),
+        "permanent_session_lifetime": str(app.config.get('PERMANENT_SESSION_LIFETIME')),
+        "remember_cookie_duration": str(app.config.get('REMEMBER_COOKIE_DURATION')),
+        "session_cookie_name": app.config.get('SESSION_COOKIE_NAME', 'session'),
+        "remember_cookie_name": app.config.get('REMEMBER_COOKIE_NAME', 'remember_token'),
+    }
+    
+    return jsonify(debug_info)
 
 
 
