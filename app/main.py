@@ -3,7 +3,7 @@ import os
 import pyodbc
 import json
 from datetime import datetime, timedelta
-from flask import Flask, render_template, jsonify, Response, redirect, url_for, flash, request, session
+from flask import Flask, render_template, jsonify, Response, redirect, url_for, flash, request, session, make_response, g
 from flask_bootstrap import Bootstrap
 from flask_login import LoginManager, login_user, login_required, logout_user, UserMixin, current_user
 from flask_wtf import FlaskForm
@@ -65,6 +65,29 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 cache = Cache(app)
 
+# Add after_request handler to prevent session clearing on API key requests
+@app.after_request
+def remove_session_cookies_from_api_responses(response):
+    """Remove session-clearing cookies from API key authenticated requests"""
+    if hasattr(g, 'api_authenticated') and g.api_authenticated:
+        # This is an API key request - remove any session-clearing cookies
+        if 'Set-Cookie' in response.headers:
+            set_cookies = response.headers.getlist('Set-Cookie')
+            # Filter out session-clearing cookies
+            filtered_cookies = [
+                cookie for cookie in set_cookies 
+                if not (cookie.startswith('badge_session=;') and 'Expires=Thu, 01 Jan 1970' in cookie)
+            ]
+            
+            # Remove all Set-Cookie headers and add back only non-session-clearing ones
+            response.headers.pop('Set-Cookie', None)
+            for cookie in filtered_cookies:
+                response.headers.add('Set-Cookie', cookie)
+                
+        print(f"[API_KEY] Cleaned response headers for {request.path}")
+    
+    return response
+
 DB_URL = os.getenv("DATABASE_URL")
 UID = os.getenv("DATABASE_UID")
 DATABASE_PWD = os.getenv("DATABASE_PWD")
@@ -82,20 +105,16 @@ app.register_blueprint(calendar_sync_blueprint)
 
 @login_manager.user_loader
 def load_user(user_id):
-    """Enhanced user loader with detailed debugging"""
-    print(f"[DEBUG] Attempting to load user: {repr(user_id)}")
+    """Enhanced user loader with better error handling"""
     try:
         if user_id in users_data:
             user_role = users_data[user_id]["role"]
-            print(f"[DEBUG] Successfully loaded user {user_id} with role {user_role}")
             return User(id=user_id, role=user_role)
         else:
-            print(f"[DEBUG] User {user_id} not found in users_data. Available users: {list(users_data.keys())}")
+            print(f"User {user_id} not found in users_data")
             return None
     except Exception as e:
-        print(f"[ERROR] Exception loading user {user_id}: {e}")
-        import traceback
-        traceback.print_exc()
+        print(f"Error loading user {user_id}: {e}")
         return None
 
 
@@ -107,7 +126,12 @@ def refresh_handler():
 
 @login_manager.unauthorized_handler
 def unauthorized_handler():
-    """Handle unauthorized access - check if it's an API call"""
+    """Handle unauthorized access - but ignore API key requests"""
+    # Check if this is an API key request - if so, don't interfere
+    api_key = request.args.get('api_key') or request.headers.get('X-API-Key')
+    if api_key and api_key in API_KEYS.values():
+        return  # Don't process API key requests through Flask-Login
+    
     print(f"[DEBUG] Unauthorized access to {request.path} from {request.remote_addr}")
     print(f"[DEBUG] Current user authenticated: {current_user.is_authenticated}")
     print(f"[DEBUG] Session keys: {list(session.keys())}")
@@ -149,11 +173,11 @@ def login():
                 session.permanent = True
                 session.modified = True  # Force session save
                 
-                # Clear any existing cache issues (temporarily disabled for debugging)
-                # try:
-                #     cache.clear()
-                # except Exception as e:
-                #     print(f"Warning: Could not clear cache: {e}")
+                # Clear any existing cache issues
+                try:
+                    cache.clear()
+                except Exception as e:
+                    print(f"Warning: Could not clear cache: {e}")
                 
                 # Login with remember=True for long sessions
                 login_successful = login_user(user_obj, remember=True, duration=timedelta(days=365))
@@ -214,14 +238,33 @@ API_KEYS = {
     "user2": "Wp4GB88gwX4mpbFAj3QyV6e3sasdfaweadfwgadf"
 }
 
+
 def require_api_key(view_function):
     @wraps(view_function)
     def decorated_function(*args, **kwargs):
-        if 'api_key' not in request.args:
+        # Check for API key
+        api_key = request.args.get('api_key') or request.headers.get('X-API-Key')
+        
+        if not api_key:
             return jsonify(error="API key required"), 403
-        if request.args['api_key'] not in API_KEYS.values():
+            
+        if api_key not in API_KEYS.values():
             return jsonify(error="Invalid API key"), 403
-        return view_function(*args, **kwargs)
+        
+        # Mark this request as API-authenticated to bypass Flask-Login
+        g.api_authenticated = True
+        
+        # Call the view function directly
+        result = view_function(*args, **kwargs)
+        
+        # Create a clean response without Flask-Login interference
+        if hasattr(result, 'status_code'):  # Already a Response object
+            response = result
+        else:
+            response = make_response(result)
+            response.headers['Content-Type'] = 'application/json'
+        
+        return response
     return decorated_function
 
 @app.route('/protected_endpoint', methods=['GET'])
