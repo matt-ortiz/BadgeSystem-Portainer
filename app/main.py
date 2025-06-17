@@ -71,20 +71,69 @@ def remove_session_cookies_from_api_responses(response):
     """Remove session-clearing cookies from API key authenticated requests"""
     if hasattr(g, 'api_authenticated') and g.api_authenticated:
         # This is an API key request - remove any session-clearing cookies
+        print(f"[API_KEY] Processing API key request: {request.path}")
+        
         if 'Set-Cookie' in response.headers:
             set_cookies = response.headers.getlist('Set-Cookie')
+            print(f"[API_KEY] Found {len(set_cookies)} cookies before filtering:")
+            for i, cookie in enumerate(set_cookies):
+                print(f"[API_KEY]   Cookie {i}: {cookie}")
+            
             # Filter out session-clearing cookies
-            filtered_cookies = [
-                cookie for cookie in set_cookies 
-                if not (cookie.startswith('badge_session=;') and 'Expires=Thu, 01 Jan 1970' in cookie)
-            ]
+            filtered_cookies = []
+            for cookie in set_cookies:
+                is_session_clear = cookie.startswith('badge_session=;') and 'Expires=Thu, 01 Jan 1970' in cookie
+                if is_session_clear:
+                    print(f"[API_KEY] REMOVING session-clearing cookie: {cookie}")
+                else:
+                    print(f"[API_KEY] KEEPING cookie: {cookie}")
+                    filtered_cookies.append(cookie)
             
             # Remove all Set-Cookie headers and add back only non-session-clearing ones
             response.headers.pop('Set-Cookie', None)
             for cookie in filtered_cookies:
                 response.headers.add('Set-Cookie', cookie)
                 
-        print(f"[API_KEY] Cleaned response headers for {request.path}")
+            print(f"[API_KEY] After filtering: {len(filtered_cookies)} cookies remain")
+        else:
+            print(f"[API_KEY] No Set-Cookie headers found")
+                
+        print(f"[API_KEY] Final response headers: {dict(response.headers)}")
+        
+        # Also try to prevent any future cookie additions
+        # Mark response to prevent any other middleware from adding cookies
+        response.headers['X-API-Key-Request'] = 'true'
+    
+    return response
+
+
+# Add a second after_request handler with higher priority
+@app.after_request  
+def final_cookie_cleanup(response):
+    """Final cleanup - remove session cookies from API key requests"""
+    if response.headers.get('X-API-Key-Request') == 'true':
+        print(f"[FINAL_CLEANUP] Checking for any remaining session cookies")
+        if 'Set-Cookie' in response.headers:
+            set_cookies = response.headers.getlist('Set-Cookie')
+            print(f"[FINAL_CLEANUP] Found {len(set_cookies)} cookies:")
+            for i, cookie in enumerate(set_cookies):
+                print(f"[FINAL_CLEANUP]   Cookie {i}: {cookie}")
+                
+            # Remove session-clearing cookies one more time
+            filtered_cookies = []
+            for cookie in set_cookies:
+                if not (cookie.startswith('badge_session=;') and 'Expires=Thu, 01 Jan 1970' in cookie):
+                    filtered_cookies.append(cookie)
+                else:
+                    print(f"[FINAL_CLEANUP] REMOVING late-added session cookie: {cookie}")
+            
+            response.headers.pop('Set-Cookie', None)
+            for cookie in filtered_cookies:
+                response.headers.add('Set-Cookie', cookie)
+                
+        # Remove our marker header
+        response.headers.pop('X-API-Key-Request', None)
+        print(f"[FINAL_CLEANUP] Final headers: {dict(response.headers)}")
     
     return response
 
@@ -578,11 +627,40 @@ def fetch_card_image(card_id):
 
 
 @app.route('/api/AMAG/today')
-@require_api_key
-@cache.cached(timeout=60)
 def api_AMAG_today():
-    today = badged_today()  # Replace this with your function to get the room data
-    return today
+    # Check for API key FIRST, before any Flask-Login processing
+    api_key = request.args.get('api_key') or request.headers.get('X-API-Key')
+    
+    if not api_key:
+        return jsonify(error="API key required"), 403
+        
+    if api_key not in API_KEYS.values():
+        return jsonify(error="Invalid API key"), 403
+    
+    # Mark this as API authenticated to bypass all Flask-Login processing
+    g.api_authenticated = True
+    
+    # Get the cached data
+    cache_key = 'api_AMAG_today'
+    cached_data = cache.get(cache_key)
+    
+    if cached_data is None:
+        # Get fresh data
+        today_data = badged_today()
+        cache.set(cache_key, today_data, timeout=60)
+        cached_data = today_data
+    
+    # Create a completely clean response
+    response = app.response_class(
+        response=cached_data,
+        status=200,
+        mimetype='application/json'
+    )
+    
+    # Ensure CORS headers are set
+    response.headers['Access-Control-Allow-Origin'] = 'http://badge.nrsc.org'
+    
+    return response
 
 
 
